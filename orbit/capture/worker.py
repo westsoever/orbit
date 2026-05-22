@@ -7,7 +7,7 @@ import queue
 import time
 from typing import Any
 
-from orbit.capture.axbridge import get_tree
+from orbit.capture.ax_walker import get_tree
 from orbit.capture.extract import flatten_text_atoms
 from orbit.storage.writer import record_event
 
@@ -33,14 +33,19 @@ def run_capture_worker(
 
         bundle = event["bundle_id"]
         app_name = event["app_name"]
+        pid = event.get("pid")
         try:
             if on_capture_start:
                 on_capture_start()
-            tree = get_tree(bundle, max_depth=max_depth)
+            tree = get_tree(pid, max_depth=max_depth)
             if on_capture_done:
                 on_capture_done()
         except Exception:
             logger.exception("get_tree failed for %s", bundle)
+            continue
+
+        if not tree:
+            logger.debug("no AX tree for %s (pid=%s)", bundle, pid)
             continue
 
         atoms = flatten_text_atoms(tree)

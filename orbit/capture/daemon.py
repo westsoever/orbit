@@ -8,7 +8,7 @@ import logging
 import queue
 import threading
 
-from AppKit import NSRunLoop, NSDate
+from PyObjCTools import AppHelper
 from orbit.capture.listener import AppFocusListener
 from orbit.capture.worker import run_capture_worker
 from orbit.embed.worker import run_embedding_worker
@@ -62,9 +62,8 @@ def main() -> None:
 
     logger.info("Orbit daemon running. Switch app focus to capture context. Ctrl-C to stop.")
     try:
-        while True:
-            NSRunLoop.currentRunLoop().runUntilDate_(NSDate.dateWithTimeIntervalSinceNow_(2.0))
-    except KeyboardInterrupt:
+        AppHelper.runConsoleEventLoop(installInterrupt=True)
+    finally:
         logger.info("Shutting down...")
         focus_queue.put(None)
         if embed_queue is not None:

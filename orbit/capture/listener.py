@@ -33,6 +33,7 @@ class _Observer(NSObject):
         self._q.put({
             "bundle_id": bundle,
             "app_name": app.localizedName(),
+            "pid": int(app.processIdentifier()),
             "ts": time.time(),
         })
 

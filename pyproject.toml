@@ -3,9 +3,8 @@ name = "orbit"
 version = "0.0.1"
 requires-python = ">=3.10"
 dependencies = [
-  "macapptree==0.0.2",
   "pyobjc-framework-Cocoa>=10.3.1",
-  "Pillow",
+  "pyobjc-framework-ApplicationServices>=10.3.1",
   "sqlite-vec==0.1.9",
   "sentence-transformers>=3.0",
 ]
@@ -13,6 +12,9 @@ dependencies = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["orbit*"]
+
+[project.scripts]
+orbit = "orbit.cli:main"
 
 [build-system]
 requires = ["setuptools>=68"]
