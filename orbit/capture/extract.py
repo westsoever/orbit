@@ -15,7 +15,9 @@ def flatten_text_atoms(tree, _path: str = "") -> list[dict]:
             continue
         path = f"{_path}/{i}"
         role = node.get("role", "")
-        text = (node.get("value") or node.get("name") or "").strip()
+        val = node.get("value")
+        name = node.get("name")
+        text = (val if isinstance(val, str) else name if isinstance(name, str) else "").strip()
         if role in CAPTURE_ROLES and text:
             results.append({
                 "role": role,
