@@ -9,7 +9,10 @@ _MODEL: SentenceTransformer | None = None
 def _get_model() -> SentenceTransformer:
     global _MODEL
     if _MODEL is None:
-        _MODEL = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+        try:
+            _MODEL = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2", local_files_only=True)
+        except Exception:
+            _MODEL = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
     return _MODEL
 
 def search_semantic(

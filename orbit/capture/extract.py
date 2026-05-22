@@ -2,9 +2,17 @@ from __future__ import annotations
 
 CAPTURE_ROLES = {"AXTextField", "AXTextArea", "AXStaticText", "AXDocument", "AXWebArea"}
 
-def flatten_text_atoms(tree: list[dict], _path: str = "") -> list[dict]:
+def flatten_text_atoms(tree, _path: str = "") -> list[dict]:
+    if isinstance(tree, dict):
+        nodes = [tree]
+    elif isinstance(tree, list):
+        nodes = tree
+    else:
+        return []
     results = []
-    for i, node in enumerate(tree):
+    for i, node in enumerate(nodes):
+        if not isinstance(node, dict):
+            continue
         path = f"{_path}/{i}"
         role = node.get("role", "")
         text = (node.get("value") or node.get("name") or "").strip()

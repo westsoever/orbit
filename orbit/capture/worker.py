@@ -47,16 +47,22 @@ def run_capture_worker(
         if not atoms:
             continue
 
+        root = tree if isinstance(tree, dict) else (tree[0] if tree else {})
         window_title = None
-        for node in tree:
+        stack = [root]
+        while stack:
+            node = stack.pop()
+            if not isinstance(node, dict):
+                continue
             if node.get("role") == "AXWindow":
                 window_title = node.get("name") or node.get("title")
                 break
+            stack.extend(node.get("children") or [])
 
         visible_texts = [a["text"] for a in atoms[:5]]
 
         ev_dict: dict[str, Any] = {
-            "timestamp": datetime.datetime.utcnow().isoformat(),
+            "timestamp": datetime.datetime.now(datetime.UTC).isoformat(),
             "app_bundle_id": bundle,
             "app_name": app_name,
             "window_title": window_title,

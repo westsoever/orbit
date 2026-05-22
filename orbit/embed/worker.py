@@ -18,7 +18,10 @@ def _get_model() -> SentenceTransformer:
     if _MODEL is None:
         with _MODEL_LOCK:
             if _MODEL is None:
-                _MODEL = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+                try:
+                    _MODEL = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2", local_files_only=True)
+                except Exception:
+                    _MODEL = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
                 logger.info("Embedding model loaded on device: %s", _MODEL.device)
     return _MODEL
 
@@ -29,7 +32,6 @@ def run_embedding_worker(
     flush_ms: float = 200,
     batch_max: int = 32,
 ) -> None:
-    model = _get_model()
     logger.info("Embedding worker started")
     while True:
         batch = []
@@ -59,6 +61,7 @@ def run_embedding_worker(
 
         try:
             texts = [t for (_, _, t) in batch]
+            model = _get_model()
             vectors = model.encode(texts, normalize_embeddings=True)
             payload = [sqlite_vec.serialize_float32(v.tolist()) for v in vectors]
             atom_ids = [aid for (_, aid, _) in batch]

@@ -17,8 +17,8 @@ def _patch_cmd(cmd):
     return cmd
 
 
-_subprocess.check_call = lambda cmd, **kw: _real_check_call(_patch_cmd(cmd), **kw)
-_subprocess.run = lambda cmd, **kw: _real_run(_patch_cmd(cmd), **kw)
+_subprocess.check_call = lambda cmd, **kw: _real_check_call(_patch_cmd(cmd), **{"stdout": _subprocess.DEVNULL, **kw})
+_subprocess.run = lambda cmd, **kw: _real_run(_patch_cmd(cmd), **{"stdout": _subprocess.DEVNULL, **kw})
 
 from macapptree import get_tree, get_app_bundle  # noqa: E402
 
