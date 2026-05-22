@@ -1,0 +1,9 @@
+Metadata-Version: 2.4
+Name: orbit
+Version: 0.0.1
+Requires-Python: >=3.10
+Requires-Dist: macapptree==0.0.2
+Requires-Dist: pyobjc-framework-Cocoa>=10.3.1
+Requires-Dist: Pillow
+Requires-Dist: sqlite-vec==0.1.9
+Requires-Dist: sentence-transformers>=3.0

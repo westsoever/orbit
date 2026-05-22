@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Orbit Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    /* System font stack */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+    }
+
+    /* Theme transition */
+    *, *::before, *::after {
+      transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
+    }
+
+    /* Accordion transitions */
+    .accordion-body {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .accordion-body.open {
+      max-height: 2000px;
+    }
+
+    /* Gauge arc */
+    .gauge-track { fill: none; }
+    .gauge-fill { fill: none; stroke-linecap: round; transition: stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.4s ease; }
+
+    /* Toast */
+    #toast {
+      pointer-events: none;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+    #toast.hidden { opacity: 0; transform: translateY(8px); }
+    #toast.visible { opacity: 1; transform: translateY(0); }
+
+    /* Loading overlay */
+    #loading {
+      transition: opacity 0.2s ease;
+    }
+
+    /* Spinner */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { animation: spin 0.7s linear infinite; }
+
+    /* Drop zone highlight */
+    .drop-active { border-color: #6366f1 !important; background-color: rgba(99,102,241,0.06) !important; }
+
+    /* Dark mode vars */
+    .dark { color-scheme: dark; }
+
+    /* Ring for calendar priority */
+    .ring-priority { box-shadow: 0 0 0 2px #fbbf24; }
+
+    /* Markdown prose reset inside cards */
+    .md-content h1, .md-content h2, .md-content h3 { font-weight: 600; margin: 0.75rem 0 0.25rem; }
+    .md-content p { margin: 0.4rem 0; }
+    .md-content ul, .md-content ol { margin: 0.4rem 0 0.4rem 1.25rem; }
+    .md-content li { margin: 0.15rem 0; }
+    .md-content strong { font-weight: 600; }
+    .md-content code { font-size: 0.8em; padding: 0.1em 0.3em; border-radius: 4px; }
+
+    /* Subtle scroll bar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { border-radius: 3px; }
+    .light ::-webkit-scrollbar-thumb { background: #d4d4d8; }
+    .dark ::-webkit-scrollbar-thumb { background: #3f3f46; }
+
+    /* Drag handle for drop zone */
+    .drop-zone { transition: border-color 0.2s, background-color 0.2s; }
+  </style>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            zinc: {
+              925: '#18181b',
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
+
+<!-- Loading overlay -->
+<div id="loading" class="fixed inset-0 z-50 flex items-center justify-center bg-white/70 dark:bg-zinc-950/70 backdrop-blur-sm hidden">
+  <div class="flex flex-col items-center gap-3">
+    <svg class="spinner w-8 h-8 text-zinc-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"></circle>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+    </svg>
+    <span class="text-sm text-zinc-500 dark:text-zinc-400">Parsing report…</span>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="fixed bottom-6 right-6 z-50 hidden">
+  <div class="flex items-center gap-2.5 bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm font-medium px-4 py-3 rounded-xl shadow-lg">
+    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <span id="toast-msg">Invalid report file.</span>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div id="settings-modal" class="fixed inset-0 z-40 hidden">
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" id="modal-backdrop"></div>
+  <div class="absolute inset-0 flex items-center justify-center p-4">
+    <div class="relative bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-sm p-6">
+      <h2 class="text-base font-semibold mb-5 text-zinc-800 dark:text-zinc-100">Work Hours</h2>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1.5 uppercase tracking-wide">Start time</label>
+          <input id="work-start" type="time" value="09:00"
+            class="w-full rounded-lg border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1.5 uppercase tracking-wide">End time</label>
+          <input id="work-end" type="time" value="17:00"
+            class="w-full rounded-lg border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-500" />
+        </div>
+      </div>
+      <div class="mt-6 flex gap-2.5 justify-end">
+        <button id="modal-cancel" class="px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 rounded-lg transition-colors">Cancel</button>
+        <button id="modal-save" class="px-4 py-2 text-sm font-semibold bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-lg hover:bg-zinc-700 dark:hover:bg-zinc-300 transition-colors">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Top Bar -->
+<header class="sticky top-0 z-30 border-b border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md">
+  <div class="max-w-5xl mx-auto px-5 h-14 flex items-center justify-between gap-4">
+    <!-- Logo -->
+    <div class="flex items-center gap-2.5 flex-shrink-0">
+      <div class="w-7 h-7 rounded-lg bg-zinc-900 dark:bg-white flex items-center justify-center">
+        <svg class="w-4 h-4 text-white dark:text-zinc-900" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="3"/><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z" opacity=".3"/><path d="M12 6a6 6 0 1 0 0 12A6 6 0 0 0 12 6z" opacity=".5"/>
+        </svg>
+      </div>
+      <span class="font-semibold text-sm tracking-tight text-zinc-800 dark:text-zinc-100">Orbit</span>
+    </div>
+
+    <!-- Center: clock + work timer -->
+    <div class="flex items-center gap-4 text-sm">
+      <span id="clock" class="font-mono font-medium text-zinc-800 dark:text-zinc-200 tabular-nums text-base"></span>
+      <span class="text-zinc-300 dark:text-zinc-700 select-none">|</span>
+      <span id="work-timer" class="text-zinc-500 dark:text-zinc-400 text-sm font-medium"></span>
+    </div>
+
+    <!-- Right: settings + theme toggle -->
+    <div class="flex items-center gap-1.5">
+      <button id="settings-btn" title="Settings (,)" class="p-2 rounded-lg text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-800 dark:hover:text-zinc-100 transition-colors">
+        <svg class="w-4.5 h-4.5 w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+      <button id="theme-toggle" title="Toggle theme (t)" class="p-2 rounded-lg text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-800 dark:hover:text-zinc-100 transition-colors">
+        <!-- Sun icon (shown in dark mode) -->
+        <svg id="icon-sun" class="w-[18px] h-[18px] hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+          <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        </svg>
+        <!-- Moon icon (shown in light mode) -->
+        <svg id="icon-moon" class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- Main content -->
+<main class="max-w-5xl mx-auto px-5 py-8 space-y-7">
+
+  <!-- Empty state -->
+  <div id="empty-state" class="flex flex-col items-center justify-center py-20 text-center">
+    <div class="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center mb-5">
+      <svg class="w-7 h-7 text-zinc-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/>
+      </svg>
+    </div>
+    <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-200 mb-1.5">No report loaded</h2>
+    <p class="text-sm text-zinc-500 dark:text-zinc-400 max-w-xs">Drop your Chief of Staff briefing file below, or click the drop zone to browse.</p>
+  </div>
+
+  <!-- Dashboard content (hidden until report loaded) -->
+  <div id="dashboard-content" class="hidden space-y-7">
+
+    <!-- Hero row: 3 cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+      <!-- Productivity score gauge -->
+      <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 flex flex-col items-center justify-center gap-3 shadow-sm">
+        <p class="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">Productivity Score</p>
+        <div class="relative">
+          <svg width="120" height="80" viewBox="0 0 120 80">
+            <!-- Track arc (semicircle) -->
+            <path id="gauge-track" class="gauge-track" stroke="#e4e4e7" stroke-width="10"
+              d="M 14 70 A 46 46 0 0 1 106 70" />
+            <!-- Fill arc -->
+            <path id="gauge-fill" class="gauge-fill" stroke="#22c55e" stroke-width="10"
+              d="M 14 70 A 46 46 0 0 1 106 70"
+              stroke-dasharray="144.51"
+              stroke-dashoffset="144.51" />
+          </svg>
+          <div class="absolute inset-0 flex flex-col items-center justify-end pb-1">
+            <span id="score-value" class="text-3xl font-bold leading-none text-emerald-500">—</span>
+            <span class="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5">out of 10</span>
+          </div>
+        </div>
+        <div id="score-label" class="text-xs font-medium text-zinc-400 dark:text-zinc-500"></div>
+      </div>
+
+      <!-- Top priority -->
+      <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 flex flex-col gap-3 shadow-sm">
+        <p class="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">Critical Priority</p>
+        <div id="priority-text" class="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed flex-1"></div>
+        <div class="flex items-center gap-2 mt-auto">
+          <span class="inline-flex items-center gap-1.5 text-xs font-medium bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60 px-2.5 py-1 rounded-full">
+            <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+            High leverage
+          </span>
+        </div>
+      </div>
+
+      <!-- Daily quote -->
+      <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 flex flex-col gap-3 shadow-sm">
+        <p class="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">Daily Thought</p>
+        <blockquote id="daily-quote" class="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed italic flex-1 border-l-2 border-zinc-200 dark:border-zinc-700 pl-3"></blockquote>
+        <p id="quote-author" class="text-xs text-zinc-400 dark:text-zinc-500 font-medium mt-auto"></p>
+      </div>
+    </div>
+
+    <!-- Calendar timeline -->
+    <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
+      <div class="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800">
+        <h2 class="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Today's Schedule</h2>
+      </div>
+      <div id="calendar-list" class="divide-y divide-zinc-100 dark:divide-zinc-800/60 px-4 py-2"></div>
+    </div>
+
+    <!-- Day Insights accordion -->
+    <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
+      <button class="accordion-trigger w-full flex items-center justify-between px-6 py-4 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors" data-target="insights-body">
+        <span class="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Day Insights</span>
+        <svg class="accordion-chevron w-4 h-4 text-zinc-400 transition-transform duration-300" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div id="insights-body" class="accordion-body">
+        <div class="px-4 pb-4 space-y-3 pt-1">
+
+          <!-- Recommendations for tomorrow -->
+          <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
+            <button class="accordion-trigger w-full flex items-center justify-between px-5 py-3.5 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors" data-target="recs-body">
+              <div class="flex items-center gap-2.5">
+                <span class="w-6 h-6 rounded-md bg-violet-100 dark:bg-violet-950/50 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
+                </span>
+                <span class="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Recommendations for Tomorrow</span>
+              </div>
+              <svg class="accordion-chevron w-3.5 h-3.5 text-zinc-400 transition-transform duration-300" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div id="recs-body" class="accordion-body">
+              <div id="recs-content" class="md-content px-5 pb-4 text-sm text-zinc-600 dark:text-zinc-400"></div>
+            </div>
+          </div>
+
+          <!-- Leverage -->
+          <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
+            <button class="accordion-trigger w-full flex items-center justify-between px-5 py-3.5 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors" data-target="leverage-body">
+              <div class="flex items-center gap-2.5">
+                <span class="w-6 h-6 rounded-md bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="m2 20 20-8L2 4v6l10 2-10 2Z"/></svg>
+                </span>
+                <span class="text-xs font-semibold text-zinc-700 dark:text-zinc-300">What to Leverage</span>
+              </div>
+              <svg class="accordion-chevron w-3.5 h-3.5 text-zinc-400 transition-transform duration-300" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div id="leverage-body" class="accordion-body">
+              <div id="leverage-content" class="px-5 pb-4 text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed"></div>
+            </div>
+          </div>
+
+          <!-- Weekly todos -->
+          <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
+            <button class="accordion-trigger w-full flex items-center justify-between px-5 py-3.5 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors" data-target="todos-body">
+              <div class="flex items-center gap-2.5">
+                <span class="w-6 h-6 rounded-md bg-sky-100 dark:bg-sky-950/50 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                </span>
+                <span class="text-xs font-semibold text-zinc-700 dark:text-zinc-300">This Week's Todos</span>
+              </div>
+              <svg class="accordion-chevron w-3.5 h-3.5 text-zinc-400 transition-transform duration-300" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div id="todos-body" class="accordion-body">
+              <div id="todos-content" class="md-content px-5 pb-4 text-sm text-zinc-600 dark:text-zinc-400"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Full report sections accordions -->
+    <div class="space-y-3">
+      <h2 class="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 px-1">Full Report</h2>
+
+      <!-- Communications Triage -->
+      <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
+        <button class="accordion-trigger w-full flex items-center justify-between px-6 py-4 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors" data-target="comms-body">
+          <div class="flex items-center gap-3">
+            <span class="w-7 h-7 rounded-lg bg-rose-50 dark:bg-rose-950/50 flex items-center justify-center flex-shrink-0">
+              <svg class="w-3.5 h-3.5 text-rose-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </span>
+            <span class="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Communications Triage</span>
+          </div>
+          <svg class="accordion-chevron w-4 h-4 text-zinc-400 transition-transform duration-300" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div id="comms-body" class="accordion-body">
+          <div id="comms-content" class="md-content px-6 pb-5 pt-1 text-sm text-zinc-600 dark:text-zinc-400"></div>
+        </div>
+      </div>
+
+      <!-- Action & Insight Ledger -->
+      <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
+        <button class="accordion-trigger w-full flex items-center justify-between px-6 py-4 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors" data-target="action-body">
+          <div class="flex items-center gap-3">
+            <span class="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-950/50 flex items-center justify-center flex-shrink-0">
+              <svg class="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            </span>
+            <span class="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Action &amp; Insight Ledger</span>
+          </div>
+          <svg class="accordion-chevron w-4 h-4 text-zinc-400 transition-transform duration-300" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div id="action-body" class="accordion-body">
+          <div id="action-content" class="md-content px-6 pb-5 pt-1 text-sm text-zinc-600 dark:text-zinc-400"></div>
+        </div>
+      </div>
+
+      <!-- Daily Growth Reflection -->
+      <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
+        <button class="accordion-trigger w-full flex items-center justify-between px-6 py-4 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors" data-target="growth-body">
+          <div class="flex items-center gap-3">
+            <span class="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center flex-shrink-0">
+              <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </span>
+            <span class="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Daily Growth Reflection</span>
+          </div>
+          <svg class="accordion-chevron w-4 h-4 text-zinc-400 transition-transform duration-300" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div id="growth-body" class="accordion-body">
+          <div id="growth-content" class="md-content px-6 pb-5 pt-1 text-sm text-zinc-600 dark:text-zinc-400"></div>
+        </div>
+      </div>
+
+      <!-- Key Moment Analysis -->
+      <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
+        <button class="accordion-trigger w-full flex items-center justify-between px-6 py-4 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors" data-target="key-body">
+          <div class="flex items-center gap-3">
+            <span class="w-7 h-7 rounded-lg bg-sky-50 dark:bg-sky-950/50 flex items-center justify-center flex-shrink-0">
+              <svg class="w-3.5 h-3.5 text-sky-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </span>
+            <span class="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Key Moment Analysis</span>
+          </div>
+          <svg class="accordion-chevron w-4 h-4 text-zinc-400 transition-transform duration-300" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div id="key-body" class="accordion-body">
+          <div id="key-content" class="md-content px-6 pb-5 pt-1 text-sm text-zinc-600 dark:text-zinc-400"></div>
+        </div>
+      </div>
+
+      <!-- Productivity Score full -->
+      <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
+        <button class="accordion-trigger w-full flex items-center justify-between px-6 py-4 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors" data-target="score-body">
+          <div class="flex items-center gap-3">
+            <span class="w-7 h-7 rounded-lg bg-violet-50 dark:bg-violet-950/50 flex items-center justify-center flex-shrink-0">
+              <svg class="w-3.5 h-3.5 text-violet-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            </span>
+            <span class="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Productivity Score</span>
+          </div>
+          <svg class="accordion-chevron w-4 h-4 text-zinc-400 transition-transform duration-300" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div id="score-body" class="accordion-body">
+          <div id="score-content" class="md-content px-6 pb-5 pt-1 text-sm text-zinc-600 dark:text-zinc-400"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /dashboard-content -->
+
+  <!-- Drop zone -->
+  <div id="drop-zone" class="drop-zone mt-4 border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl flex flex-col items-center justify-center gap-3 py-10 px-6 cursor-pointer hover:border-zinc-400 dark:hover:border-zinc-600 transition-colors group">
+    <div class="w-12 h-12 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center group-hover:border-zinc-300 dark:group-hover:border-zinc-700 transition-colors">
+      <svg class="w-5 h-5 text-zinc-400 dark:text-zinc-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/>
+      </svg>
+    </div>
+    <div class="text-center">
+      <p class="text-sm font-medium text-zinc-600 dark:text-zinc-400">Drop a report file here</p>
+      <p class="text-xs text-zinc-400 dark:text-zinc-600 mt-0.5">or click to browse — .md files only</p>
+    </div>
+    <input id="file-input" type="file" accept=".md,.txt" class="hidden" />
+  </div>
+
+</main>
+
+<script>
+// ============================================================
+// CONSTANTS & QUOTES
+// ============================================================
+const QUOTES = [
+  { text: "A mediocre model with perfect context outperforms a frontier model starting from zero.", author: "Orbit Design Principle" },
+  { text: "The secret of getting ahead is getting started.", author: "Mark Twain" },
+  { text: "Focus is not about saying yes. It's about saying no to a hundred other good ideas.", author: "Steve Jobs" },
+  { text: "Excellence is not a destination but a continuous journey.", author: "Brian Tracy" },
+  { text: "Your time is limited, so don't waste it living someone else's life.", author: "Steve Jobs" },
+  { text: "Small daily improvements over time lead to stunning results.", author: "Robin Sharma" },
+  { text: "Energy flows where attention goes.", author: "Tony Robbins" },
+];
+
+// ============================================================
+// THEME
+// ============================================================
+const html = document.documentElement;
+
+function loadTheme() {
+  const saved = localStorage.getItem('orbit-theme') || 'light';
+  applyTheme(saved);
+}
+
+function applyTheme(mode) {
+  html.classList.toggle('dark', mode === 'dark');
+  document.getElementById('icon-sun').classList.toggle('hidden', mode !== 'dark');
+  document.getElementById('icon-moon').classList.toggle('hidden', mode === 'dark');
+  localStorage.setItem('orbit-theme', mode);
+}
+
+function toggleTheme() {
+  const isDark = html.classList.contains('dark');
+  applyTheme(isDark ? 'light' : 'dark');
+}
+
+document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+
+// ============================================================
+// CLOCK & WORK TIMER
+// ============================================================
+function getWorkHours() {
+  return {
+    start: localStorage.getItem('orbit-work-start') || '09:00',
+    end: localStorage.getItem('orbit-work-end') || '17:00',
+  };
+}
+
+function parseTimeToMinutes(hhmm) {
+  const [h, m] = hhmm.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function updateClock() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  document.getElementById('clock').textContent =
+    `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+
+  const { start, end } = getWorkHours();
+  const startMin = parseTimeToMinutes(start);
+  const endMin = parseTimeToMinutes(end);
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+
+  const timerEl = document.getElementById('work-timer');
+  if (nowMin < startMin) {
+    const diff = startMin - nowMin;
+    timerEl.textContent = `Workday in ${Math.floor(diff / 60)}h ${diff % 60}m`;
+  } else if (nowMin >= endMin) {
+    timerEl.textContent = 'Workday done';
+  } else {
+    const diff = endMin - nowMin;
+    timerEl.textContent = `${Math.floor(diff / 60)}h ${diff % 60}m left at work`;
+  }
+}
+
+setInterval(updateClock, 1000);
+updateClock();
+
+// ============================================================
+// SETTINGS MODAL
+// ============================================================
+const modal = document.getElementById('settings-modal');
+const workStartInput = document.getElementById('work-start');
+const workEndInput = document.getElementById('work-end');
+
+function openSettings() {
+  const { start, end } = getWorkHours();
+  workStartInput.value = start;
+  workEndInput.value = end;
+  modal.classList.remove('hidden');
+}
+
+function closeSettings() {
+  modal.classList.add('hidden');
+}
+
+document.getElementById('settings-btn').addEventListener('click', openSettings);
+document.getElementById('modal-cancel').addEventListener('click', closeSettings);
+document.getElementById('modal-backdrop').addEventListener('click', closeSettings);
+document.getElementById('modal-save').addEventListener('click', () => {
+  localStorage.setItem('orbit-work-start', workStartInput.value);
+  localStorage.setItem('orbit-work-end', workEndInput.value);
+  updateClock();
+  closeSettings();
+});
+
+// ============================================================
+// KEYBOARD SHORTCUTS
+// ============================================================
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 't') toggleTheme();
+  if (e.key === ',') openSettings();
+});
+
+// ============================================================
+// ACCORDION
+// ============================================================
+function setupAccordions() {
+  document.querySelectorAll('.accordion-trigger').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.dataset.target;
+      const body = document.getElementById(targetId);
+      const chevron = btn.querySelector('.accordion-chevron');
+      const isOpen = body.classList.contains('open');
+
+      body.classList.toggle('open', !isOpen);
+      if (chevron) chevron.style.transform = isOpen ? '' : 'rotate(180deg)';
+    });
+  });
+}
+
+// ============================================================
+// TOAST
+// ============================================================
+let toastTimer = null;
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  toast.classList.remove('hidden');
+  requestAnimationFrame(() => {
+    toast.classList.remove('hidden');
+    toast.classList.add('visible');
+  });
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toast.classList.remove('visible');
+    toast.classList.add('hidden');
+  }, 4000);
+}
+
+// ============================================================
+// LOADING
+// ============================================================
+function setLoading(on) {
+  document.getElementById('loading').classList.toggle('hidden', !on);
+}
+
+// ============================================================
+// PARSER
+// ============================================================
+function parseReport(markdown) {
+  // Split on numbered section headers: ### 1. Title
+  const sectionRegex = /^### \d+\.\s+/m;
+  const parts = markdown.split(/(?=^### \d+\.\s+)/m).filter(p => p.trim());
+
+  const sections = {};
+  for (const part of parts) {
+    const match = part.match(/^### (\d+)\.\s+(.+)/m);
+    if (match) {
+      sections[parseInt(match[1])] = part.replace(/^### \d+\.\s+.+\n/, '').trim();
+    }
+  }
+
+  const result = {
+    score: null,
+    recommendations: '',
+    criticalPriority: '',
+    engagements: [],
+    successObservation: '',
+    weeklyTodos: '',
+    rawSections: sections,
+  };
+
+  // Section 6: Productivity Score
+  const sec6 = sections[6] || '';
+  const scoreMatch = sec6.match(/Score:\s*([\d.]+)\s*\/\s*10/i);
+  if (scoreMatch) result.score = parseFloat(scoreMatch[1]);
+
+  // Extract "Recommendations for Tomorrow" list from sec6
+  const recsMatch = sec6.match(/\*\*Recommendations for Tomorrow:\*\*\n([\s\S]*?)(?:\n\*\*|$)/i);
+  if (recsMatch) {
+    result.recommendations = recsMatch[1].trim();
+  } else {
+    // Try to get everything after the header
+    const recsAlt = sec6.match(/Recommendations for Tomorrow[:\s]*\n([\s\S]+)/i);
+    if (recsAlt) result.recommendations = recsAlt[1].trim();
+  }
+
+  // Section 2: Tomorrow's Horizon
+  const sec2 = sections[2] || '';
+
+  // Critical Priority paragraph
+  const cpMatch = sec2.match(/\*\*Critical Priority[:\s]*\*\*[\s\S]*?\n([\s\S]+?)(?:\n---|\n\*\*|$)/i);
+  if (cpMatch) {
+    result.criticalPriority = cpMatch[1].trim().replace(/\*\*/g, '');
+  } else {
+    const cpAlt = sec2.match(/\*\*Critical Priority[:\s]*\*\*\s*\n?([\s\S]+)/i);
+    if (cpAlt) result.criticalPriority = cpAlt[1].trim().replace(/\*\*/g, '');
+  }
+
+  // Engagements
+  const engRegex = /\*\*(\d{2}:\d{2})\s*[–—-]\s*(\d{2}:\d{2}):\*\*\s*(.+)/g;
+  let engMatch;
+  while ((engMatch = engRegex.exec(sec2)) !== null) {
+    result.engagements.push({
+      start: engMatch[1],
+      end: engMatch[2],
+      title: engMatch[3].trim(),
+    });
+  }
+
+  // Section 4: Daily Growth Reflection — Success Observation
+  const sec4 = sections[4] || '';
+  const soMatch = sec4.match(/\*\*Success Observation:\*\*\s*(.+)/i);
+  if (soMatch) result.successObservation = soMatch[1].trim();
+
+  // Section 3: Action & Insight Ledger — New Commitments
+  const sec3 = sections[3] || '';
+  const todosMatch = sec3.match(/\*\*New Commitments[^*]*\*\*\n([\s\S]*?)(?:\n\*\*|$)/i);
+  if (todosMatch) {
+    result.weeklyTodos = todosMatch[1].trim();
+  }
+
+  return result;
+}
+
+// ============================================================
+// GAUGE
+// ============================================================
+// Semicircle arc: path "M 14 70 A 46 46 0 0 1 106 70"
+// Circumference of semicircle with r=46: Math.PI * 46 ≈ 144.51
+const GAUGE_CIRCUMFERENCE = Math.PI * 46;
+
+function scoreColor(score) {
+  if (score < 5) return { stroke: '#ef4444', text: 'text-red-500' };
+  if (score < 7) return { stroke: '#f59e0b', text: 'text-amber-500' };
+  if (score < 8.5) return { stroke: '#84cc16', text: 'text-lime-500' };
+  return { stroke: '#10b981', text: 'text-emerald-500' };
+}
+
+function scoreLabel(score) {
+  if (score < 5) return 'Needs improvement';
+  if (score < 7) return 'Moderate';
+  if (score < 8.5) return 'Good';
+  return 'Excellent';
+}
+
+function renderGauge(score) {
+  const fill = document.getElementById('gauge-fill');
+  const valueEl = document.getElementById('score-value');
+  const labelEl = document.getElementById('score-label');
+
+  const ratio = Math.min(Math.max(score / 10, 0), 1);
+  const offset = GAUGE_CIRCUMFERENCE * (1 - ratio);
+  const { stroke, text } = scoreColor(score);
+
+  fill.style.strokeDashoffset = offset;
+  fill.style.stroke = stroke;
+
+  valueEl.textContent = score.toFixed(1);
+  valueEl.className = `text-3xl font-bold leading-none ${text}`;
+  labelEl.textContent = scoreLabel(score);
+}
+
+// ============================================================
+// CALENDAR RENDER
+// ============================================================
+function renderCalendar(engagements, criticalPriority) {
+  const container = document.getElementById('calendar-list');
+  container.innerHTML = '';
+
+  if (!engagements.length) {
+    container.innerHTML = '<p class="px-4 py-5 text-sm text-zinc-400 dark:text-zinc-500">No scheduled engagements found.</p>';
+    return;
+  }
+
+  // Normalise critical priority to match titles
+  const cpLower = criticalPriority.toLowerCase();
+
+  engagements.forEach((eng, i) => {
+    const isPriority = cpLower.includes(eng.title.toLowerCase()) ||
+      eng.title.toLowerCase().split(/\s+/).some(w => w.length > 3 && cpLower.includes(w));
+
+    const isLast = i === engagements.length - 1;
+
+    const item = document.createElement('div');
+    item.className = `flex items-start gap-4 px-2 py-3.5 ${!isLast ? 'border-b border-zinc-100 dark:border-zinc-800/60' : ''}`;
+
+    // Time column
+    const timeCol = document.createElement('div');
+    timeCol.className = 'flex-shrink-0 w-24 text-right';
+    timeCol.innerHTML = `
+      <span class="text-xs font-mono font-medium text-zinc-500 dark:text-zinc-400">${eng.start}</span>
+      <span class="text-xs text-zinc-300 dark:text-zinc-700 mx-0.5">–</span>
+      <span class="text-xs font-mono font-medium text-zinc-400 dark:text-zinc-600">${eng.end}</span>
+    `;
+
+    // Dot / line
+    const dotCol = document.createElement('div');
+    dotCol.className = 'flex-shrink-0 flex flex-col items-center pt-1.5';
+    dotCol.innerHTML = `
+      <div class="w-2 h-2 rounded-full ${isPriority ? 'bg-amber-400' : 'bg-zinc-300 dark:bg-zinc-700'}"></div>
+      ${!isLast ? '<div class="w-px flex-1 mt-1 bg-zinc-200 dark:bg-zinc-800 min-h-[20px]"></div>' : ''}
+    `;
+
+    // Content
+    const content = document.createElement('div');
+    content.className = `flex-1 min-w-0 pb-1`;
+    const card = document.createElement('div');
+    card.className = `inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium ${
+      isPriority
+        ? 'bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 ring-priority'
+        : 'bg-zinc-50 dark:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300'
+    }`;
+    card.textContent = eng.title;
+    if (isPriority) {
+      const badge = document.createElement('span');
+      badge.className = 'text-xs bg-amber-200 dark:bg-amber-800/60 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded-full font-semibold';
+      badge.textContent = 'Priority';
+      card.appendChild(badge);
+    }
+    content.appendChild(card);
+
+    item.appendChild(timeCol);
+    item.appendChild(dotCol);
+    item.appendChild(content);
+    container.appendChild(item);
+  });
+}
+
+// ============================================================
+// RENDER DASHBOARD
+// ============================================================
+function renderDashboard(parsed, raw) {
+  // Show/hide states
+  document.getElementById('empty-state').classList.add('hidden');
+  document.getElementById('dashboard-content').classList.remove('hidden');
+
+  // Quote
+  const q = QUOTES[new Date().getDay() % QUOTES.length];
+  document.getElementById('daily-quote').textContent = `"${q.text}"`;
+  document.getElementById('quote-author').textContent = `— ${q.author}`;
+
+  // Gauge
+  if (parsed.score !== null) renderGauge(parsed.score);
+
+  // Priority
+  const pEl = document.getElementById('priority-text');
+  pEl.textContent = parsed.criticalPriority || 'No critical priority found in report.';
+
+  // Calendar
+  renderCalendar(parsed.engagements, parsed.criticalPriority);
+
+  // Day Insights: recs
+  const recsEl = document.getElementById('recs-content');
+  if (parsed.recommendations) {
+    recsEl.innerHTML = marked.parse(parsed.recommendations);
+  } else {
+    recsEl.innerHTML = '<p class="text-zinc-400">No recommendations found.</p>';
+  }
+
+  // Leverage
+  const levEl = document.getElementById('leverage-content');
+  levEl.textContent = parsed.successObservation || 'No success observation found.';
+
+  // Todos
+  const todosEl = document.getElementById('todos-content');
+  if (parsed.weeklyTodos) {
+    todosEl.innerHTML = marked.parse(parsed.weeklyTodos);
+  } else {
+    todosEl.innerHTML = '<p class="text-zinc-400">No commitments found.</p>';
+  }
+
+  // Full report sections (raw markdown → marked)
+  const sectionMap = {
+    'comms-content': parsed.rawSections[1],
+    'action-content': parsed.rawSections[3],
+    'growth-content': parsed.rawSections[4],
+    'key-content': parsed.rawSections[5],
+    'score-content': parsed.rawSections[6],
+  };
+  for (const [id, md] of Object.entries(sectionMap)) {
+    const el = document.getElementById(id);
+    if (el && md) {
+      el.innerHTML = marked.parse(md);
+    } else if (el) {
+      el.innerHTML = '<p class="text-zinc-400">Section not found in report.</p>';
+    }
+  }
+}
+
+// ============================================================
+// PROCESS FILE
+// ============================================================
+function processMarkdown(markdown) {
+  setLoading(true);
+
+  setTimeout(() => {
+    try {
+      const parsed = parseReport(markdown);
+
+      if (parsed.score === null) {
+        showToast('Invalid report: missing Productivity Score (§6).');
+        setLoading(false);
+        return;
+      }
+
+      localStorage.setItem('orbit-last-report', markdown);
+      renderDashboard(parsed, markdown);
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to parse report. Check console for details.');
+    } finally {
+      setLoading(false);
+    }
+  }, 80); // brief delay to allow loading spinner to render
+}
+
+// ============================================================
+// DROP ZONE
+// ============================================================
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+
+dropZone.addEventListener('click', () => fileInput.click());
+
+fileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  readFile(file);
+  fileInput.value = '';
+});
+
+dropZone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  dropZone.classList.add('drop-active');
+});
+
+dropZone.addEventListener('dragleave', () => {
+  dropZone.classList.remove('drop-active');
+});
+
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('drop-active');
+  const file = e.dataTransfer.files[0];
+  if (file) readFile(file);
+});
+
+function readFile(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => processMarkdown(e.target.result);
+  reader.onerror = () => showToast('Could not read file.');
+  reader.readAsText(file);
+}
+
+// ============================================================
+// INIT
+// ============================================================
+function init() {
+  loadTheme();
+  setupAccordions();
+
+  // Set daily quote immediately
+  const q = QUOTES[new Date().getDay() % QUOTES.length];
+  document.getElementById('daily-quote').textContent = `"${q.text}"`;
+  document.getElementById('quote-author').textContent = `— ${q.author}`;
+
+  // Load persisted report
+  const saved = localStorage.getItem('orbit-last-report');
+  if (saved) {
+    processMarkdown(saved);
+  }
+}
+
+init();
+</script>
+</body>
+</html>
