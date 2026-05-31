@@ -7,5 +7,6 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #3514 | 12:53 PM | ⚖️ | MVP plan scoped to bubble + approval loop, defers capture wiring and memory tiers | ~965 |
 | #3508 | 12:51 PM | 🔵 | Orbit codebase state mapped: sidecar complete, shell/MCP/tests missing | ~701 |
 </claude-mem-context>
