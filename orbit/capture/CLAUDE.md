@@ -9,4 +9,9 @@
 |----|------|---|-------|------|
 | #3514 | 12:53 PM | ⚖️ | MVP plan scoped to bubble + approval loop, defers capture wiring and memory tiers | ~965 |
 | #3508 | 12:51 PM | 🔵 | Orbit codebase state mapped: sidecar complete, shell/MCP/tests missing | ~701 |
+### May 22, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #3225 | 10:19 PM | 🔵 | Orbit's existing architecture uses accessibility-first capture with Python/AppKit implementation | ~437 |
 </claude-mem-context>
