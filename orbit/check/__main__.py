@@ -93,7 +93,7 @@ def main() -> None:
     update_status(con, lock, log_ids[task.title], "approved", approved_prompt)
 
     # 5. Dispatch
-    exit_code = dispatch(approved_prompt)
+    exit_code = dispatch(approved_prompt, title=task.title)
     update_status(con, lock, log_ids[task.title], "dispatched", exit_code=exit_code)
 
     sys.exit(exit_code)
