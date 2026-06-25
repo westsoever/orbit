@@ -13,6 +13,15 @@ def main() -> None:
     start_p.add_argument("--db", default="~/.orbit/orbit.db", help="SQLite DB path (default: ~/.orbit/orbit.db)")
     start_p.add_argument("--no-embed", action="store_true", help="Skip embedding worker")
 
+    check_p = sub.add_parser("check", help="Detect tasks from context and dispatch to Claude")
+    check_p.add_argument("--context", default=None, help="Path to local context.md (fallback when --source local)")
+    check_p.add_argument("--source", choices=["github", "local"], default="github",
+                         help="Context source: github (default, westsoever/cos daily report) or local")
+    check_p.add_argument("--date", default=None, help="Report date YYYY-MM-DD (default: today)")
+    check_p.add_argument("--db", default="~/.orbit/orbit.db", help="SQLite DB path")
+    check_p.add_argument("--dry-run", action="store_true", help="Detect and print tasks; skip notification and dispatch")
+    check_p.add_argument("--no-notify", action="store_true", help="Skip macOS notification")
+
     args = parser.parse_args()
 
     if args.command == "start":
@@ -26,5 +35,23 @@ def main() -> None:
 
         from orbit.capture.daemon import main as daemon_main
         daemon_main()
+
+    elif args.command == "check":
+        argv = ["orbit-check", "--source", args.source]
+        if args.context:
+            argv += ["--context", args.context]
+        if args.date:
+            argv += ["--date", args.date]
+        if args.db:
+            argv += ["--db", args.db]
+        if args.dry_run:
+            argv.append("--dry-run")
+        if args.no_notify:
+            argv.append("--no-notify")
+        sys.argv = argv
+
+        from orbit.check.__main__ import main as check_main
+        check_main()
+
     else:
         parser.print_help()

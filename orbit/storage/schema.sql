@@ -45,3 +45,14 @@ END;
 CREATE VIRTUAL TABLE IF NOT EXISTS vec_atoms USING vec0(
   embedding float[384] distance_metric=cosine
 );
+
+CREATE TABLE IF NOT EXISTS task_log (
+  id               INTEGER PRIMARY KEY AUTOINCREMENT,
+  timestamp        TEXT NOT NULL,
+  title            TEXT,
+  original_prompt  TEXT,
+  approved_prompt  TEXT,
+  agent_type       TEXT,
+  status           TEXT DEFAULT 'detected',
+  exit_code        INTEGER
+);
