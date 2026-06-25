@@ -21,6 +21,7 @@ def main() -> None:
     check_p.add_argument("--db", default="~/.orbit/orbit.db", help="SQLite DB path")
     check_p.add_argument("--dry-run", action="store_true", help="Detect and print tasks; skip notification and dispatch")
     check_p.add_argument("--no-notify", action="store_true", help="Skip macOS notification")
+    check_p.add_argument("--refresh", action="store_true", help="Re-run LLM detection even if today's tasks are cached")
 
     args = parser.parse_args()
 
@@ -48,6 +49,8 @@ def main() -> None:
             argv.append("--dry-run")
         if args.no_notify:
             argv.append("--no-notify")
+        if args.refresh:
+            argv.append("--refresh")
         sys.argv = argv
 
         from orbit.check.__main__ import main as check_main
