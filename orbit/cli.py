@@ -14,6 +14,8 @@ def main() -> None:
     start_p.add_argument("--no-embed", action="store_true", help="Skip embedding worker")
 
     check_p = sub.add_parser("check", help="Detect tasks from context and dispatch to Claude")
+    check_p.add_argument("action", nargs="?", choices=["skipped"], default=None,
+                         help="'skipped' to review today's skipped tasks")
     check_p.add_argument("--context", default=None, help="Path to local context.md (fallback when --source local)")
     check_p.add_argument("--source", choices=["github", "local"], default="github",
                          help="Context source: github (default, westsoever/cos daily report) or local")
@@ -38,7 +40,10 @@ def main() -> None:
         daemon_main()
 
     elif args.command == "check":
-        argv = ["orbit-check", "--source", args.source]
+        argv = ["orbit-check"]
+        if args.action:
+            argv.append(args.action)
+        argv += ["--source", args.source]
         if args.context:
             argv += ["--context", args.context]
         if args.date:

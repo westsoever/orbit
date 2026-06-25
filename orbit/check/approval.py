@@ -37,8 +37,14 @@ def _print_task(index: int, total: int, task: Task, prompt: str) -> None:
     print()
 
 
-def run_approval(tasks: list[Task]) -> tuple[Task, str] | None:
-    """Present each task and collect user decision. Returns (task, prompt) or None."""
+def run_approval(
+    tasks: list[Task],
+    on_skip=None,
+) -> tuple[Task, str] | None:
+    """Present each task and collect user decision. Returns (task, prompt) or None.
+
+    on_skip(task) is called immediately when the user presses 's'.
+    """
     total = len(tasks)
     for i, task in enumerate(tasks, 1):
         prompt = task.suggested_prompt
@@ -63,6 +69,8 @@ def run_approval(tasks: list[Task]) -> tuple[Task, str] | None:
                 if new:
                     prompt = new
             elif choice in ("s", "skip"):
+                if on_skip:
+                    on_skip(task)
                 break
             elif choice in ("q", "quit"):
                 return None

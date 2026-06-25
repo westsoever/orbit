@@ -46,6 +46,33 @@ def update_status(
         )
 
 
+def get_skipped_today(
+    con: sqlite3.Connection,
+    lock: threading.Lock,
+    report_date: str | None = None,
+) -> list[tuple[int, Task]]:
+    """Return (log_id, Task) pairs with status='skipped' from today."""
+    d = report_date or date.today().isoformat()
+    with lock:
+        rows = con.execute(
+            "SELECT id, title, description, original_prompt, agent_type"
+            " FROM task_log"
+            " WHERE status = 'skipped'"
+            "   AND date(timestamp) = ?",
+            (d,),
+        ).fetchall()
+    return [
+        (row["id"], Task(
+            title=row["title"],
+            description=row["description"] or "",
+            suggested_prompt=row["original_prompt"] or "",
+            agent_type=row["agent_type"] or "admin",
+            confidence=1.0,
+        ))
+        for row in rows
+    ]
+
+
 def get_pending_today(
     con: sqlite3.Connection,
     lock: threading.Lock,
