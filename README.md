@@ -247,6 +247,8 @@ Internet is off during capture; used only when `orbit check` dispatches an appro
 | `innitial.md` | Full roadmap and feasibility matrix |
 | `plans/03-universal-capture.md` | Universal capture implementation plan |
 | `docs/capture-compatibility.md` | App-by-app capture matrix |
+| `docs/architecture-context-routing.md` | Context routing diagram (capture vs check) |
+| `docs/diagrams/context-routing.mmd` | Mermaid source for architecture diagram |
 | `docs/gdpr/` | Privacy policy and compliance templates |
 | `orbit/capture/PERMISSIONS.md` | macOS permission setup |
 

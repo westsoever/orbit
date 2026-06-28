@@ -15,27 +15,29 @@ Visual reference for mentor review. Interactive version: open `orbit-context-rou
 
 ## Routing diagram
 
+Source file: [`diagrams/context-routing.mmd`](diagrams/context-routing.mmd)
+
 ```mermaid
 flowchart TB
   subgraph Perception["Perception — orbit start"]
-    Apps[macOS apps] --> Listener[Focus listener<br/>NSWorkspace · 1.5s debounce]
-    Listener --> Worker[Capture worker<br/>AX · metadata · OCR fallback]
-    Browser[Browser bridge Tier 2] --> DB[(~/.orbit/orbit.db)]
-    FS[FSEvents Tier 3 opt-in] --> DB
+    Apps["macOS apps"] --> Listener["Focus listener<br/>NSWorkspace · 1.5s debounce"]
+    Listener --> Worker["Capture worker<br/>AX · metadata · OCR fallback"]
+    Browser["Browser bridge Tier 2"] --> DB[("~/.orbit/orbit.db")]
+    FS["FSEvents Tier 3 opt-in"] --> DB
     Worker --> DB
-    DB --> Embed[Embed worker optional]
-    Embed --> Search[Hybrid search BM25 + vec]
+    DB --> Embed["Embed worker optional"]
+    Embed --> Search["Hybrid search BM25 + vec"]
   end
 
   subgraph Cognition["Cognition — orbit check"]
-    Report[Daily report GitHub] --> Check[orbit check LLM]
-    Check --> Tasks[task_log]
-    Tasks --> Approve[Approval gate CLI]
-    Approve --> Dispatch[OpenRouter]
-    Dispatch --> Output[mvp-output/*.md]
+    Report["Daily report GitHub"] --> Check["orbit check LLM"]
+    Check --> Tasks["task_log"]
+    Tasks --> Approve["Approval gate CLI"]
+    Approve --> Dispatch["OpenRouter"]
+    Dispatch --> Output["mvp-output/*.md"]
   end
 
-  Search -.->|Phase 2 not wired| Check
+  Search -.->|"Phase 2 not wired"| Check
 ```
 
 ## Capture tiers

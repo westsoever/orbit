@@ -1,0 +1,49 @@
+%% Orbit context architecture & routing
+%% Render: GitHub markdown, Mermaid Live Editor, or `mmdc -i docs/diagrams/context-routing.mmd`
+%% See docs/architecture-context-routing.md for narrative
+
+flowchart TB
+  subgraph Perception["Perception — orbit start"]
+    Apps["macOS apps<br/>Terminal · Cursor · Dia · …"]
+    Listener["Focus listener<br/>NSWorkspace · debounce 1.5s"]
+    Worker["Capture worker<br/>AX walk · metadata · OCR fallback"]
+    Browser["Browser bridge<br/>Tier 2 · localhost :8765"]
+    FS["FSEvents<br/>Tier 3 opt-in · paths only"]
+    DB[("~/.orbit/orbit.db<br/>events · atoms · audit")]
+    Embed["Embed worker<br/>MiniLM → vec_atoms optional"]
+    Search["Hybrid search<br/>BM25 + cosine RRF"]
+
+    Apps --> Listener
+    Listener --> Worker
+    Worker --> DB
+    Browser --> DB
+    FS --> DB
+    DB --> Embed
+    Embed --> Search
+  end
+
+  subgraph Cognition["Cognition — orbit check"]
+    Report["Daily report<br/>GitHub cos wiki or local .md"]
+    Check["orbit check<br/>LLM task detector"]
+    Tasks["task_log<br/>detected · skipped · dispatched"]
+    Approve["Approval gate<br/>CLI prompt today"]
+    Dispatch["OpenRouter dispatch"]
+    Output["mvp-output/*.md"]
+
+    Report --> Check
+    Check --> Tasks
+    Tasks --> Approve
+    Approve --> Dispatch
+    Dispatch --> Output
+  end
+
+  Search -.->|"Phase 2 — not wired yet"| Check
+
+  classDef capture fill:#eef4ff,stroke:#4a7fd4
+  classDef store fill:#eef8f0,stroke:#3d9a5a
+  classDef agent fill:#fff8ee,stroke:#c4841d
+  classDef external fill:#f5f5f5,stroke:#888
+
+  class Apps,Listener,Worker,Browser,FS capture
+  class DB,Embed,Search store
+  class Report,Check,Tasks,Approve,Dispatch,Output agent
