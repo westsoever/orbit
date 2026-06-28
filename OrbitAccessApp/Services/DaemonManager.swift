@@ -28,6 +28,7 @@ enum DaemonManagerError: LocalizedError {
     }
 }
 
+@MainActor
 final class DaemonManager {
     private let bridge: OrbitBridgeClient
     private(set) var controlState: DaemonControlState = .offline
@@ -73,33 +74,9 @@ final class DaemonManager {
             }
         }
 
-        let binary = try resolveOrbitBinary()
-        let process = Process()
-        process.executableURL = binary
-        process.arguments = ["start", "--detach", "--no-embed", "--no-statusbar"]
-        var env = ProcessInfo.processInfo.environment
-        if env["ORBIT_ROOT"] == nil, let root = Self.inferOrbitRoot(from: binary) {
-            env["ORBIT_ROOT"] = root
-        }
-        process.environment = env
-
-        try process.run()
-        process.waitUntilExit()
-        guard process.terminationStatus == 0 else {
-            controlState = .error(DaemonManagerError.startFailed(status: process.terminationStatus).localizedDescription)
-            throw DaemonManagerError.startFailed(status: process.terminationStatus)
-        }
-
-        if await waitForOnline(timeoutSeconds: 10) {
-            controlState = .running
-            return
-        }
-
-        controlState = .error(DaemonManagerError.startTimeout.localizedDescription)
-        throw DaemonManagerError.startTimeout
+        try await launchDaemon(retryAfterForceStop: true)
     }
 
-    @MainActor
     func stop() async throws {
         guard controlState != .stopping else { return }
         controlState = .stopping
@@ -112,47 +89,103 @@ final class DaemonManager {
         if await bridge.checkStatus() {
             do {
                 try await bridge.requestShutdown()
-                if await waitForOffline(timeoutSeconds: 10) {
-                    controlState = .offline
-                    return
-                }
+                _ = await waitForOffline(timeoutSeconds: 10)
             } catch {
                 // Fall through to CLI stop.
             }
         }
 
-        let binary = try resolveOrbitBinary()
-        let process = Process()
-        process.executableURL = binary
-        process.arguments = ["stop"]
-        var env = ProcessInfo.processInfo.environment
-        if env["ORBIT_ROOT"] == nil, let root = Self.inferOrbitRoot(from: binary) {
-            env["ORBIT_ROOT"] = root
-        }
-        process.environment = env
-
-        try process.run()
-        process.waitUntilExit()
-        guard process.terminationStatus == 0 else {
-            controlState = .error(DaemonManagerError.stopFailed(status: process.terminationStatus).localizedDescription)
-            throw DaemonManagerError.stopFailed(status: process.terminationStatus)
-        }
-
+        try await runOrbitStop()
         _ = await waitForOffline(timeoutSeconds: 5)
         controlState = .offline
     }
 
-    @MainActor
     func syncControlState(isOnline: Bool, isCaptureActive: Bool) {
         switch controlState {
         case .starting, .stopping:
             break
         case .error:
             if isOnline {
-                controlState = isCaptureActive ? .running : .running
+                controlState = .running
             }
         case .offline, .running:
             controlState = isOnline ? .running : .offline
+        }
+    }
+
+    private func launchDaemon(retryAfterForceStop: Bool) async throws {
+        let binary = try resolveOrbitBinary()
+        let status = try await runOrbitStart(binary: binary)
+        guard status == 0 else {
+            let error = DaemonManagerError.startFailed(status: status)
+            controlState = .error(error.localizedDescription)
+            throw error
+        }
+
+        if await waitForOnline(timeoutSeconds: 10) {
+            controlState = .running
+            return
+        }
+
+        if retryAfterForceStop {
+            try await runOrbitStop()
+            controlState = .starting
+            try await launchDaemon(retryAfterForceStop: false)
+            return
+        }
+
+        let error = DaemonManagerError.startTimeout
+        controlState = .error(error.localizedDescription)
+        throw error
+    }
+
+    private func runOrbitStart(binary: URL) async throws -> Int32 {
+        try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                do {
+                    let process = Process()
+                    process.executableURL = binary
+                    process.arguments = ["start", "--detach", "--no-embed", "--no-statusbar"]
+                    var env = ProcessInfo.processInfo.environment
+                    if env["ORBIT_ROOT"] == nil, let root = Self.inferOrbitRoot(from: binary) {
+                        env["ORBIT_ROOT"] = root
+                    }
+                    process.environment = env
+                    try process.run()
+                    process.waitUntilExit()
+                    continuation.resume(returning: process.terminationStatus)
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    private func runOrbitStop() async throws {
+        let binary = try resolveOrbitBinary()
+        let status = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Int32, Error>) in
+            DispatchQueue.global(qos: .userInitiated).async {
+                do {
+                    let process = Process()
+                    process.executableURL = binary
+                    process.arguments = ["stop"]
+                    var env = ProcessInfo.processInfo.environment
+                    if env["ORBIT_ROOT"] == nil, let root = Self.inferOrbitRoot(from: binary) {
+                        env["ORBIT_ROOT"] = root
+                    }
+                    process.environment = env
+                    try process.run()
+                    process.waitUntilExit()
+                    continuation.resume(returning: process.terminationStatus)
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+        guard status == 0 else {
+            let error = DaemonManagerError.stopFailed(status: status)
+            controlState = .error(error.localizedDescription)
+            throw error
         }
     }
 
@@ -199,7 +232,6 @@ final class DaemonManager {
     }
 
     private static func inferOrbitRoot(from binary: URL) -> String? {
-        // .venv/bin/orbit -> repo root
         let venvBin = binary.deletingLastPathComponent()
         guard venvBin.lastPathComponent == "bin", venvBin.deletingLastPathComponent().lastPathComponent == ".venv" else {
             return nil

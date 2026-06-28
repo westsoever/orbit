@@ -38,7 +38,11 @@ struct StatusBarPopoverView: View {
             .frame(maxWidth: .infinity)
 
             HStack(spacing: 8) {
-                if model.isDaemonOnline {
+                if isTransitioning {
+                    ProgressView()
+                        .controlSize(.small)
+                        .frame(maxWidth: .infinity)
+                } else if model.isDaemonOnline {
                     Button("Stop daemon") {
                         Task { await model.stopDaemon() }
                     }
@@ -52,6 +56,13 @@ struct StatusBarPopoverView: View {
                 }
             }
             .frame(maxWidth: .infinity)
+
+            if case .error(let message) = model.daemonControlState {
+                Text(message)
+                    .font(.caption2)
+                    .foregroundStyle(Color.red)
+                    .lineLimit(2)
+            }
         }
         .padding(16)
         .frame(width: 280)
@@ -78,6 +89,15 @@ struct StatusBarPopoverView: View {
         if !model.canBrowseContext { return "No database" }
         if model.canUseLiveServices { return "Online" }
         return "Browse only"
+    }
+
+    private var isTransitioning: Bool {
+        switch model.daemonControlState {
+        case .starting, .stopping:
+            return true
+        default:
+            return false
+        }
     }
 }
 

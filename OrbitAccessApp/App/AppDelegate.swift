@@ -12,6 +12,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        DaemonNotificationService.shared.configure()
+        Task {
+            await DaemonNotificationService.shared.requestAuthorizationIfNeeded()
+        }
         registerAIFunctions()
         NotificationCenter.default.addObserver(
             self,

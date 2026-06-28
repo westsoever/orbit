@@ -2,6 +2,7 @@ import Foundation
 import Observation
 import Combine
 
+@MainActor
 @Observable
 final class AppViewModel {
     let chatStore = ChatStore()
@@ -38,6 +39,7 @@ final class AppViewModel {
 
     @ObservationIgnored private let walWatcher = WALWatcher()
     @ObservationIgnored private var statusTimer: AnyCancellable?
+    @ObservationIgnored private var hasPolledDaemonOnce = false
 
     init() {
         daemonManager = DaemonManager(bridge: bridge)
@@ -92,7 +94,7 @@ final class AppViewModel {
         do {
             try await daemonManager.start()
             daemonControlState = daemonManager.controlState
-            await pollDaemonStatus()
+            await pollDaemonStatus(notifyIfOnline: true)
         } catch {
             daemonControlState = daemonManager.controlState
         }
@@ -103,7 +105,7 @@ final class AppViewModel {
         do {
             try await daemonManager.stop()
             daemonControlState = daemonManager.controlState
-            await pollDaemonStatus()
+            await pollDaemonStatus(notifyIfOffline: true)
         } catch {
             daemonControlState = daemonManager.controlState
         }
@@ -130,12 +132,23 @@ final class AppViewModel {
     }
 
     @MainActor
-    private func pollDaemonStatus() async {
+    private func pollDaemonStatus(notifyIfOnline: Bool = false, notifyIfOffline: Bool = false) async {
+        let wasOnline = isDaemonOnline
         isDaemonOnline = await bridge.checkStatus()
         isCaptureActive = bridge.captureActive
         daemonManager.syncControlState(isOnline: isDaemonOnline, isCaptureActive: isCaptureActive)
         daemonControlState = daemonManager.controlState
         await taskStore.refresh(isDaemonOnline: isDaemonOnline)
+
+        if notifyIfOnline, isDaemonOnline {
+            DaemonNotificationService.shared.notifyDaemonStarted()
+        } else if notifyIfOffline, !isDaemonOnline {
+            DaemonNotificationService.shared.notifyDaemonStopped()
+        } else if hasPolledDaemonOnce, wasOnline, !isDaemonOnline {
+            DaemonNotificationService.shared.notifyDaemonStopped()
+        }
+
+        hasPolledDaemonOnce = true
     }
 
     private func startWALWatcher() {

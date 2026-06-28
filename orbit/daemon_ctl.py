@@ -64,24 +64,45 @@ def daemon_spawn_lock() -> Iterator[None]:
         fh.close()
 
 
+def is_daemon_healthy(health_url: str = DEFAULT_HEALTH_URL) -> bool:
+    """Return True when the daemon HTTP health endpoint responds."""
+    return _health_ok(health_url)
+
+
 def is_daemon_running(health_url: str = DEFAULT_HEALTH_URL) -> bool:
-    """Return True when health responds or the PID file refers to a live process."""
-    if _health_ok(health_url):
+    """Return True when the daemon is healthy (bridge up)."""
+    return is_daemon_healthy(health_url)
+
+
+def reap_stale_daemon(
+    *,
+    pid_file: str | None = None,
+    health_url: str = DEFAULT_HEALTH_URL,
+    timeout_s: float = 5.0,
+) -> bool:
+    """Kill and unpin a live PID when health is down. Returns True if a stale process was reaped."""
+    if is_daemon_healthy(health_url):
+        return False
+    pid_path = pid_file or default_pid_path()
+    pid = read_pid(pid_path)
+    if pid is None or not is_process_alive(pid):
+        remove_pid(pid_path)
+        return False
+    stopped = stop_pid(pid, timeout_s=timeout_s)
+    if stopped:
+        remove_pid(pid_path)
         return True
-    pid = read_pid()
-    return pid is not None and is_process_alive(pid)
+    return False
 
 
 def running_daemon_pid(health_url: str = DEFAULT_HEALTH_URL) -> int | None:
-    """Return the PID of a running daemon, or None if none is active."""
+    """Return the PID of a healthy daemon, or None if none is active."""
+    if not is_daemon_healthy(health_url):
+        return None
     pid = read_pid()
-    if is_daemon_running(health_url):
-        if pid is not None and is_process_alive(pid):
-            return pid
-        return pid
     if pid is not None and is_process_alive(pid):
         return pid
-    return None
+    return pid
 
 
 def spawn_detached(
@@ -100,6 +121,8 @@ def spawn_detached(
         existing = running_daemon_pid(health_url)
         if existing is not None:
             return existing, False
+
+        reap_stale_daemon(health_url=health_url)
 
         os.makedirs(os.path.dirname(os.path.expanduser(log_path)), exist_ok=True)
         log_fh = open(log_path, "a", encoding="utf-8")
