@@ -16,12 +16,9 @@ import threading
 import sqlite_vec
 from pathlib import Path
 
+from orbit.runtime import sqlite_supports_extensions
+
 _SCHEMA = Path(__file__).parent / "schema.sql"
-
-
-def sqlite_supports_extensions() -> bool:
-    """Return True when this Python build can load SQLite extensions (required for sqlite-vec)."""
-    return hasattr(sqlite3.connect(":memory:"), "enable_load_extension")
 
 
 def _extension_error() -> RuntimeError:

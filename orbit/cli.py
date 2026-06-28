@@ -15,6 +15,11 @@ import sys
 
 
 def main() -> None:
+    # Re-exec via .venv when python.org Python lacks SQLite extensions.
+    from orbit.runtime import maybe_reexec_for_embeddings
+
+    maybe_reexec_for_embeddings(sys.argv)
+
     parser = argparse.ArgumentParser(prog="orbit", description="Orbit context daemon")
     sub = parser.add_subparsers(dest="command", metavar="command")
 
@@ -92,12 +97,23 @@ def main() -> None:
     check_p.add_argument("--no-notify", action="store_true", help="Skip macOS notification")
     check_p.add_argument("--refresh", action="store_true", help="Re-run LLM detection even if today's tasks are cached")
 
+    doctor_p = sub.add_parser(
+        "doctor",
+        help="Diagnose Python/SQLite setup (embeddings require loadable extensions)",
+    )
+
     args = parser.parse_args()
+
+    if args.command == "doctor":
+        from orbit.runtime import doctor_report, sqlite_supports_extensions
+
+        print(doctor_report())
+        sys.exit(0 if sqlite_supports_extensions() else 1)
 
     if args.command == "start":
         import os
 
-        from orbit.storage.db import sqlite_supports_extensions
+        from orbit.runtime import sqlite_supports_extensions
 
         if not args.no_embed and not sqlite_supports_extensions():
             print(

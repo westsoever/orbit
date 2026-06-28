@@ -154,6 +154,7 @@ python -m orbit.search "query text"
 ### Verification & debugging
 
 ```bash
+orbit doctor                        # Python + SQLite extension diagnosis
 bash scripts/verify.sh --no-embed   # smoke tests (skip heavy embed model)
 bash scripts/grep_antipatterns.sh
 python scripts/probe_app.py --bundle com.apple.Terminal
@@ -193,7 +194,7 @@ Embeddings load MiniLM (~90MB) on first capture batch when enabled.
 
 | Symptom | Fix |
 |---------|-----|
-| `enable_load_extension` error | Activate venv; recreate with Homebrew Python; or `orbit start --no-embed` |
+| `enable_load_extension` / SQLite extensions warning | Run `orbit doctor`. Orbit auto-restarts via `.venv/bin/orbit` when the project venv exists. Otherwise: `source .venv/bin/activate && pip install -e .` |
 | Cursor/Electron: 0 atoms | Fixed by adaptive depth 24; probe with `scripts/probe_app.py` |
 | Browser: empty_tree | Enable `chrome://accessibility` or install browser extension |
 | OCR returns nothing | Grant Screen Recording; run `orbit privacy enable-ocr` |
