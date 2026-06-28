@@ -39,6 +39,57 @@ def _extension_error() -> RuntimeError:
         "See: https://alexgarcia.xyz/sqlite-vec/python.html"
     )
 
+def _migrate_schema(con: sqlite3.Connection) -> None:
+    cols = {row[1] for row in con.execute("PRAGMA table_info(context_events)")}
+    if "capture_method" not in cols:
+        con.execute(
+            "ALTER TABLE context_events ADD COLUMN capture_method TEXT DEFAULT 'ax'"
+        )
+    if "capture_tier" not in cols:
+        con.execute(
+            "ALTER TABLE context_events ADD COLUMN capture_tier INTEGER DEFAULT 1"
+        )
+    if "page_url" not in cols:
+        con.execute("ALTER TABLE context_events ADD COLUMN page_url TEXT")
+
+    tables = {
+        r[0]
+        for r in con.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()
+    }
+    if "fs_events" not in tables:
+        con.executescript(
+            """
+            CREATE TABLE fs_events (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              timestamp TEXT NOT NULL,
+              path TEXT NOT NULL,
+              event_type TEXT NOT NULL,
+              mtime REAL,
+              linked_event_id INTEGER REFERENCES context_events(id) ON DELETE SET NULL,
+              capture_tier INTEGER DEFAULT 3
+            );
+            CREATE INDEX idx_fs_events_ts ON fs_events(timestamp);
+            CREATE INDEX idx_fs_events_linked ON fs_events(linked_event_id);
+            """
+        )
+    if "capture_audit" not in tables:
+        con.executescript(
+            """
+            CREATE TABLE capture_audit (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              timestamp TEXT NOT NULL,
+              capture_method TEXT NOT NULL,
+              capture_tier INTEGER NOT NULL,
+              atom_count INTEGER NOT NULL,
+              app_bundle_id TEXT
+            );
+            CREATE INDEX idx_capture_audit_ts ON capture_audit(timestamp);
+            """
+        )
+
+
 def _apply_schema(con: sqlite3.Connection, skip_vec: bool = False) -> None:
     sql = _SCHEMA.read_text()
     if skip_vec:
@@ -49,6 +100,7 @@ def _apply_schema(con: sqlite3.Connection, skip_vec: bool = False) -> None:
             if "vec0" not in s and "vec_atoms" not in s
         ) + ";"
     con.executescript(sql)
+    _migrate_schema(con)
 
 
 def open_db_plain(path: str) -> tuple[sqlite3.Connection, threading.Lock]:

@@ -7,7 +7,10 @@ CREATE TABLE IF NOT EXISTS context_events (
   focused_element_role TEXT,
   focused_element_label TEXT,
   visible_text TEXT,
-  raw_json TEXT
+  raw_json TEXT,
+  capture_method TEXT DEFAULT 'ax',
+  capture_tier INTEGER DEFAULT 1,
+  page_url TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_events_bundle_ts
   ON context_events(app_bundle_id, timestamp);
@@ -56,3 +59,25 @@ CREATE TABLE IF NOT EXISTS task_log (
   status           TEXT DEFAULT 'detected',
   exit_code        INTEGER
 );
+
+CREATE TABLE IF NOT EXISTS fs_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  timestamp TEXT NOT NULL,
+  path TEXT NOT NULL,
+  event_type TEXT NOT NULL,
+  mtime REAL,
+  linked_event_id INTEGER REFERENCES context_events(id) ON DELETE SET NULL,
+  capture_tier INTEGER DEFAULT 3
+);
+CREATE INDEX IF NOT EXISTS idx_fs_events_ts ON fs_events(timestamp);
+CREATE INDEX IF NOT EXISTS idx_fs_events_linked ON fs_events(linked_event_id);
+
+CREATE TABLE IF NOT EXISTS capture_audit (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  timestamp TEXT NOT NULL,
+  capture_method TEXT NOT NULL,
+  capture_tier INTEGER NOT NULL,
+  atom_count INTEGER NOT NULL,
+  app_bundle_id TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_capture_audit_ts ON capture_audit(timestamp);

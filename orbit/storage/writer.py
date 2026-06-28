@@ -1,7 +1,9 @@
 import sqlite3
 import threading
 import json
+from datetime import datetime, timezone
 from typing import Any
+
 
 def record_event(
     con: sqlite3.Connection,
@@ -14,8 +16,9 @@ def record_event(
         cur = con.execute(
             """INSERT INTO context_events
                (timestamp, app_bundle_id, app_name, window_title,
-                focused_element_role, focused_element_label, visible_text, raw_json)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                focused_element_role, focused_element_label, visible_text, raw_json,
+                capture_method, capture_tier, page_url)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 event_dict.get("timestamp"),
                 event_dict.get("app_bundle_id"),
@@ -25,6 +28,9 @@ def record_event(
                 event_dict.get("focused_element_label"),
                 event_dict.get("visible_text"),
                 json.dumps(event_dict.get("raw_json")),
+                event_dict.get("capture_method", "ax"),
+                event_dict.get("capture_tier", 1),
+                event_dict.get("page_url"),
             ),
         )
         event_id = cur.lastrowid
@@ -43,6 +49,18 @@ def record_event(
                 ),
             )
             atom_ids.append(cur2.lastrowid)
+        con.execute(
+            """INSERT INTO capture_audit
+               (timestamp, capture_method, capture_tier, atom_count, app_bundle_id)
+               VALUES (?, ?, ?, ?, ?)""",
+            (
+                event_dict.get("timestamp") or datetime.now(timezone.utc).isoformat(),
+                event_dict.get("capture_method", "ax"),
+                event_dict.get("capture_tier", 1),
+                len(atoms),
+                event_dict.get("app_bundle_id"),
+            ),
+        )
         con.execute("COMMIT")
     return event_id, atom_ids
 

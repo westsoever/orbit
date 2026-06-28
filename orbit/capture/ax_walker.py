@@ -18,6 +18,9 @@ from ApplicationServices import (
     kAXErrorSuccess,
 )
 
+from orbit.capture.ax_enable import ensure_renderer_accessibility
+from orbit.capture.profiles import needs_ax_enablement
+
 logger = logging.getLogger(__name__)
 
 _ATTR_ROLE = "AXRole"
@@ -85,7 +88,34 @@ def _walk(elem, depth_remaining: int, counter: list[int]) -> dict | None:
     return node
 
 
-def get_tree(pid: int, max_depth: int = 12) -> dict:
+def count_tree_nodes(tree: dict | list | None) -> int:
+    if isinstance(tree, dict):
+        return 1 + sum(count_tree_nodes(c) for c in tree.get("children") or [])
+    if isinstance(tree, list):
+        return sum(count_tree_nodes(t) for t in tree)
+    return 0
+
+
+def get_app_metadata(pid: int) -> dict[str, str | None]:
+    """Best-effort window/app titles when a full tree walk is unavailable."""
+    out: dict[str, str | None] = {"window_title": None, "app_ax_title": None}
+    if not pid or pid <= 0:
+        return out
+    try:
+        app = AXUIElementCreateApplication(int(pid))
+    except Exception:
+        return out
+    out["app_ax_title"] = _coerce_scalar(_get(app, _ATTR_TITLE))
+    target = _get(app, _ATTR_FOCUSED_WINDOW)
+    if target is None:
+        windows = _get(app, _ATTR_WINDOWS) or []
+        target = windows[0] if windows else None
+    if target is not None:
+        out["window_title"] = _coerce_scalar(_get(target, _ATTR_TITLE))
+    return out
+
+
+def get_tree(pid: int, max_depth: int = 12, bundle_id: str | None = None) -> dict:
     """Return the AX tree for the focused window of the app with this PID.
 
     Returns {} if the app has no AX-queryable windows (e.g. com.apple.dock).
@@ -93,6 +123,8 @@ def get_tree(pid: int, max_depth: int = 12) -> dict:
     """
     if not pid or pid <= 0:
         return {}
+    if bundle_id and needs_ax_enablement(bundle_id):
+        ensure_renderer_accessibility(pid, bundle_id=bundle_id)
     try:
         app = AXUIElementCreateApplication(int(pid))
     except Exception:

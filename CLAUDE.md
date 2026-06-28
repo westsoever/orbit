@@ -4,25 +4,32 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Status
 
-Greenfield. The repo currently contains only two specification documents and no source code, build system, tests, or git history.
+Active Python implementation under `orbit/`. Spec documents remain the source of truth for product intent:
 
-- `orbit-context.md` — concise agent brief; read this first for current scope and decisions.
-- `innitial.md` — full product/technical plan with feasibility matrix and roadmap; consult for rationale.
+- `orbit-context.md` — concise agent brief; read this first for scope and decisions.
+- `innitial.md` — full product/technical plan with feasibility matrix and roadmap.
+- `plans/03-universal-capture.md` — tiered capture plan (Phases 1–6 implemented).
+- `README.md` — install, usage, CLI reference, architecture.
 
-When you need to know *what* Orbit is, read `orbit-context.md`. When you need to know *why* a choice was made, check `innitial.md`.
+When you need to know *what* Orbit is, read `orbit-context.md`. When you need to know *why* a choice was made, check `innitial.md`. For capture tiers and verification, see `plans/03-universal-capture.md` and `docs/capture-compatibility.md`.
 
-Note: claude-mem index entries below reference a prior Obsidian-plugin variant of Orbit. That work is not present in this tree; treat the index as historical context, not as a description of the current repo.
+## Build & verify
 
-## What Orbit Is
+```bash
+source .venv/bin/activate
+pip install -e .
+bash scripts/verify.sh --no-embed    # recommended smoke test (low CPU)
+bash scripts/grep_antipatterns.sh
+python scripts/probe_app.py --bundle com.apple.Terminal
+```
 
-Orbit is a macOS-only, always-on agentic system. It captures user working context via the macOS Accessibility Tree API (no screenshots by default), builds a layered memory, maintains an AI-managed Kanban board of tasks, and spawns typed sub-agents under strict human-approval gates.
+Use Homebrew Python 3.13 for sqlite-vec embeddings. Capture-only: `orbit start --no-embed`.
 
-Core design principle, quoted from the spec and load-bearing for design decisions:
-> *a mediocre model with perfect context outperforms a frontier model starting from zero every session.*
+Permissions: `orbit/capture/PERMISSIONS.md`. GDPR CLI: `orbit privacy --help`.
 
 ## Immediate Build Target
 
-The first thing to build is a lightweight macOS accessibility-tree capture daemon, functionally equivalent to [macapptree by MacPaw](https://github.com/MacPaw/macapptree) but tailored for Orbit's event-driven, always-on use case. Differences from upstream macapptree:
+The capture daemon is implemented (`orbit/capture/`). It replaces macapptree with an in-process AX walker:
 
 - Always-on, event-driven (`NSWorkspace` notifications + `AXObserver`), not on-demand polling.
 - Filter to semantically useful elements only (`AXTextField`, `AXTextArea`, `AXStaticText`, `AXDocument`, `AXWebArea`); skip decorative UI.
@@ -83,14 +90,15 @@ Stay inside the current phase. Phase boundaries from `innitial.md`:
 | 4 — Full Agent Fleet | 8–12 | Code Agent (Docker), Data + Admin agents, multi-agent coordination, local LLM mode |
 | 5 — Polish & Scale | 12+ | Confidence calibration, mobile companion, team mode, plugin system |
 
-Current scope is Phase 1, specifically the capture daemon and SQLite atom store.
+Current scope: Phase 1 Context Foundation is largely complete (capture daemon, tiered universal capture, SQLite atom store, hybrid search, privacy CLI). Next: Kanban MVP (Phase 2 in product roadmap).
 
 ## Working in This Repo
 
-- No build, lint, or test commands exist yet; create them as part of the first implementation milestone, then document them here.
-- When scaffolding the Python prototype, place it under a clearly named directory (e.g. `capture/`) and add a `pyproject.toml` (or `requirements.txt`) before committing dependencies.
-- macOS Accessibility permissions must be granted to the terminal/Python process running the daemon. Document the exact System Settings path in the project README when one is added (don't add a README until there is code to describe).
-- The repo is not a git repository yet; ask the user before running `git init`.
+- Install: `pip install -e .` in a Homebrew Python 3.13 venv (see README).
+- Verify: `bash scripts/verify.sh --no-embed`, `bash scripts/grep_antipatterns.sh`.
+- Low-CPU daemon: `orbit start --no-embed --no-browser-bridge --no-fsevents`.
+- macOS Accessibility permissions: `orbit/capture/PERMISSIONS.md`.
+- Do not commit `*.db`, `__pycache__/`, or `.venv/`.
 - Filename note: `innitial.md` is misspelled in the current tree. Don't silently rename it; ask first.
 
 ## References
