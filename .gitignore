@@ -8,5 +8,10 @@ __pycache__/
 *.db-shm
 .env
 .orbit-test-tmp/
+OrbitAccessApp/.build/
+OrbitAccessApp/.swiftpm/
+OrbitAccessApp/OrbitAccessApp.app/
+OrbitAccessApp/.tmp/
+build/OrbitAccessApp.app/
 .claude-flow/
 .DS_Store

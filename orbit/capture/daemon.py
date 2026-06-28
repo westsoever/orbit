@@ -105,6 +105,8 @@ def main() -> None:
     statusbar = OrbitStatusBar()
     logger.info("Status bar initialized")
 
+    capture_active = threading.Event()
+
     focus_queue: queue.Queue = queue.Queue()
     embed_queue: queue.Queue | None = None if not use_embed else queue.Queue()
 
@@ -117,7 +119,12 @@ def main() -> None:
         from orbit.browser_bridge.worker import run_browser_worker
 
         browser_queue = queue.Queue()
-        browser_server, _ = start_browser_bridge(browser_queue, port=args.browser_bridge_port)
+        browser_server, _ = start_browser_bridge(
+            browser_queue,
+            port=args.browser_bridge_port,
+            db_ref=(con, lock),
+            capture_active_ref=capture_active,
+        )
         browser_thread = threading.Thread(
             target=run_browser_worker,
             args=(browser_queue, embed_queue, con, lock),
@@ -132,8 +139,8 @@ def main() -> None:
         kwargs={
             "max_depth": args.max_depth,
             "policy": policy,
-            "on_capture_start": statusbar.set_active,
-            "on_capture_done": statusbar.set_idle,
+            "on_capture_start": lambda: (capture_active.set(), statusbar.set_active()),
+            "on_capture_done": lambda: (capture_active.clear(), statusbar.set_idle()),
         },
         daemon=True,
         name="capture-worker",

@@ -1,0 +1,39 @@
+import Foundation
+import GRDB
+
+struct TaskLogEntry: Codable, FetchableRecord, Identifiable, Sendable {
+    let id: Int64
+    let timestamp: String
+    let title: String?
+    let description: String?
+    let originalPrompt: String?
+    let approvedPrompt: String?
+    let agentType: String?
+    let status: String
+    let exitCode: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case id, timestamp, title, description, status
+        case originalPrompt = "original_prompt"
+        case approvedPrompt = "approved_prompt"
+        case agentType = "agent_type"
+        case exitCode = "exit_code"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(Int64.self, forKey: .id)
+        timestamp = try container.decodeIfPresent(String.self, forKey: .timestamp) ?? ""
+        title = try container.decodeIfPresent(String.self, forKey: .title)
+        description = try container.decodeIfPresent(String.self, forKey: .description)
+        originalPrompt = try container.decodeIfPresent(String.self, forKey: .originalPrompt)
+        approvedPrompt = try container.decodeIfPresent(String.self, forKey: .approvedPrompt)
+        agentType = try container.decodeIfPresent(String.self, forKey: .agentType)
+        status = try container.decode(String.self, forKey: .status)
+        exitCode = try container.decodeIfPresent(Int.self, forKey: .exitCode)
+    }
+
+    var typedAgent: AgentType? {
+        AgentType(rawValueOrNil: agentType)
+    }
+}
