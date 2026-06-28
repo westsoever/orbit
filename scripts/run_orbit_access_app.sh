@@ -64,6 +64,19 @@ fi
 echo "Launching $BUNDLE"
 open "$BUNDLE"
 
+if [[ -d "$HOME/Applications/Orbit Access.app" ]]; then
+  dev_bin="$BUNDLE/Contents/MacOS/OrbitAccessApp"
+  old_bin="$HOME/Applications/Orbit Access.app/Contents/MacOS/OrbitAccessApp"
+  if [[ -f "$dev_bin" && -f "$old_bin" && "$dev_bin" -nt "$old_bin" ]]; then
+    echo ""
+    echo "Note: open -a \"Orbit Access\" may launch an older copy at:"
+    echo "  $HOME/Applications/Orbit Access.app"
+    echo "For your latest changes, use this dev build or re-run this script."
+    echo "To remove the stale copy: rm -rf \"$HOME/Applications/Orbit Access.app\""
+    echo ""
+  fi
+fi
+
 ORBIT_BIN="${ORBIT_ROOT}/.venv/bin/orbit"
 if [[ -x "$ORBIT_BIN" ]]; then
   if ! curl -sf http://127.0.0.1:8765/health >/dev/null 2>&1; then
