@@ -34,20 +34,6 @@ struct MainWindowView: View {
                 },
             ])
             .frame(minWidth: 900, minHeight: 600)
-            .toolbar {
-                ToolbarItem(placement: .navigation) {
-                    Button { sidebaneVisible.toggle() } label: {
-                        Image(systemName: "sidebar.left")
-                    }
-                    .keyboardShortcut("\\", modifiers: .command)
-                }
-                ToolbarItem(placement: .automatic) {
-                    Button { insightVisible.toggle() } label: {
-                        Image(systemName: "sidebar.right")
-                    }
-                    .keyboardShortcut("\\", modifiers: [.command, .option])
-                }
-            }
 
             if let issue = model.seriousIssue {
                 OrbitIssueNotificationHost(issue: issue) {

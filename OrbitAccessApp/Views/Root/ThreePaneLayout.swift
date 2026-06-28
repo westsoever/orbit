@@ -35,8 +35,14 @@ struct ThreePaneLayout: View {
     var body: some View {
         HStack(spacing: 0) {
             ForEach(panes) { pane in
-                pane.view
-                    .frame(minWidth: pane.preferredWidth, idealWidth: pane.preferredWidth)
+                Group {
+                    if pane.isCollapsible {
+                        pane.view
+                    } else {
+                        pane.view
+                            .frame(minWidth: pane.preferredWidth, idealWidth: pane.preferredWidth)
+                    }
+                }
                 if pane.id != panes.last?.id {
                     OrbitPaneHairline()
                 }

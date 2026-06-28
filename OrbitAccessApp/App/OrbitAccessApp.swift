@@ -16,6 +16,9 @@ struct OrbitAccessApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1200, height: 740)
+        .commands {
+            SidebarToggleCommands()
+        }
 
         Window("Orbit Chat", id: "floating-chat") {
             FloatingChatView()
@@ -23,5 +26,19 @@ struct OrbitAccessApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
+    }
+}
+
+private struct SidebarToggleCommands: Commands {
+    @AppStorage("sidebaneVisible") private var sidebaneVisible = true
+    @AppStorage("insightVisible") private var insightVisible = true
+
+    var body: some Commands {
+        CommandGroup(replacing: .sidebar) {
+            Button("Toggle Left Sidebar") { sidebaneVisible.toggle() }
+                .keyboardShortcut("s", modifiers: .command)
+            Button("Toggle Right Sidebar") { insightVisible.toggle() }
+                .keyboardShortcut("b", modifiers: .command)
+        }
     }
 }
