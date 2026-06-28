@@ -3,15 +3,11 @@ import SwiftUI
 struct ChatMessageList: View {
     let messages: [ChatMessage]
     let isStreaming: Bool
-    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 12) {
-                    if messages.isEmpty {
-                        emptyState
-                    }
                     ForEach(messages) { message in
                         ChatBubbleView(message: message)
                             .id(message.id)
@@ -22,7 +18,7 @@ struct ChatMessageList: View {
                             .id("streaming")
                     }
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 22)
                 .padding(.vertical, 12)
             }
             .onChange(of: messages.count) { _, _ in
@@ -32,19 +28,6 @@ struct ChatMessageList: View {
                 scrollToBottom(proxy: proxy)
             }
         }
-    }
-
-    private var emptyState: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "bubble.left.and.bubble.right")
-                .font(.largeTitle)
-                .foregroundStyle(Color.orbitSecondaryText(for: colorScheme))
-            Text("Ask Orbit anything about your context")
-                .font(.callout)
-                .foregroundStyle(Color.orbitSecondaryText(for: colorScheme))
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 48)
     }
 
     private func scrollToBottom(proxy: ScrollViewProxy) {

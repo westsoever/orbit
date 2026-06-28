@@ -3,12 +3,13 @@ import SwiftUI
 struct ChatInputBar: View {
     @Environment(AppViewModel.self) private var model
     @Environment(\.colorScheme) private var colorScheme
-    var showSpinOff: Bool
+    var showSpinOff: Bool = true
+    var isCompact: Bool = false
 
     @FocusState private var isFocused: Bool
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: 10) {
+        VStack(spacing: 0) {
             TextField(
                 placeholderText,
                 text: Bindable(model.chatStore).inputText,
@@ -21,21 +22,64 @@ struct ChatInputBar: View {
             .focused($isFocused)
             .disabled(!model.isDaemonOnline)
             .onSubmit { sendMessage() }
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+            .padding(.bottom, isCompact ? 8 : 12)
+            .frame(minHeight: isCompact ? 44 : 80, alignment: .top)
 
-            if showSpinOff {
-                spinOffButton
-            }
+            Divider()
+                .padding(.horizontal, 12)
 
-            sendButton
+            toolbarRow
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .background(cardSurface, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(cardBorder, lineWidth: 1)
+        )
         .onChange(of: model.chatStore.focusRequested) { _, requested in
             if requested {
                 isFocused = true
                 model.chatStore.clearFocusRequest()
             }
         }
+    }
+
+    private var toolbarRow: some View {
+        HStack(spacing: 8) {
+            if !isCompact {
+                attachButton
+            }
+
+            if !isCompact {
+                ChatIntegrationsStrip()
+                    .frame(maxWidth: .infinity)
+            } else {
+                Spacer(minLength: 0)
+            }
+
+            HStack(spacing: 8) {
+                if showSpinOff {
+                    spinOffButton
+                }
+                sendButton
+            }
+        }
+    }
+
+    private var attachButton: some View {
+        Button {} label: {
+            Image(systemName: "plus")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(Color.orbitSecondaryText(for: colorScheme))
+                .frame(width: 28, height: 28)
+                .background(Color.orbitSecondaryText(for: colorScheme).opacity(0.12), in: Circle())
+        }
+        .buttonStyle(.plain)
+        .disabled(true)
+        .help("Attachments coming soon")
     }
 
     private var placeholderText: String {
@@ -46,9 +90,14 @@ struct ChatInputBar: View {
 
     private var sendButton: some View {
         Button(action: sendMessage) {
-            Image(systemName: "arrow.up.circle.fill")
-                .font(.title2)
-                .foregroundStyle(canSend ? Color.orbitAccent : Color.orbitSecondaryText(for: colorScheme))
+            Image(systemName: "arrow.up")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 32, height: 32)
+                .background(
+                    canSend ? Color(white: 0.15) : Color.orbitSecondaryText(for: colorScheme),
+                    in: Circle()
+                )
         }
         .buttonStyle(.plain)
         .disabled(!canSend)
@@ -68,6 +117,14 @@ struct ChatInputBar: View {
 
     @Environment(\.openWindow) private var openWindow
     @AppStorage("chatIsFloating") private var chatIsFloating = false
+
+    private var cardSurface: Color {
+        colorScheme == .dark ? .orbitCardDark : .orbitCardLight
+    }
+
+    private var cardBorder: Color {
+        colorScheme == .dark ? .orbitCardBorderDark : .orbitCardBorderLight
+    }
 
     private var canSend: Bool {
         model.isDaemonOnline && !model.chatStore.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !model.chatStore.isStreaming

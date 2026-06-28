@@ -25,6 +25,7 @@ struct FloatingChatPlaceholderView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(32)
+        .background(Color.orbitChatBackground(for: colorScheme))
     }
 
     private func returnToMainWindow() {

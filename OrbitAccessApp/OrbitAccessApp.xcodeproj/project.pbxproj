@@ -11,6 +11,10 @@
 		A1C8E4F92B3D5E7A90123456 /* CalendarEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2D9F5A03C4E6F8B01234567 /* CalendarEvent.swift */; };
 		C3E0A6B14D5F7A9C12345678 /* CalendarScheduleProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4F1B7C25E6A8B0D23456789 /* CalendarScheduleProvider.swift */; };
 		0A99DA81141740971E627C55 /* ChatInputBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49FF6FDA9DF742429C1BD00A /* ChatInputBar.swift */; };
+		A3B7C9E1F20486182A4B6C8D /* ChatHeroView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4C8D0E2F30517293B5C7D9E /* ChatHeroView.swift */; };
+		C5D9E1F3041527364A8B0C2E /* ChatIntegrationsStrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6E0F214152637485B9C1D3F /* ChatIntegrationsStrip.swift */; };
+		E7F1A325263748596A0D2E4B /* ChatSuggestionChips.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8A2B4363748596A7B1E3F5C /* ChatSuggestionChips.swift */; };
+		09B3C54748596A7B8C2D4E6F /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AC4D658596A7B8C9D3E5F70 /* FlowLayout.swift */; };
 		10EC5A23D61FF205F024F4E5 /* CalendarScheduleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75532D1DCAEEF6B15E06A796 /* CalendarScheduleView.swift */; };
 		116E9807DE921341DE29CF9E /* CaptureStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CB582D088D1623D23823135 /* CaptureStatsView.swift */; };
 		194A913E0F2C74C3608AEF43 /* OrbitAccessApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9241AF02259F0FCF7D6FFF8 /* OrbitAccessApp.swift */; };
@@ -94,6 +98,10 @@
 		464D695C55F907E9EBEA15EF /* OrbitAccessApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OrbitAccessApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		49FD9F568BD3403F7BB00624 /* ChatStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatStore.swift; sourceTree = "<group>"; };
 		49FF6FDA9DF742429C1BD00A /* ChatInputBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatInputBar.swift; sourceTree = "<group>"; };
+		B4C8D0E2F30517293B5C7D9E /* ChatHeroView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatHeroView.swift; sourceTree = "<group>"; };
+		D6E0F214152637485B9C1D3F /* ChatIntegrationsStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatIntegrationsStrip.swift; sourceTree = "<group>"; };
+		F8A2B4363748596A7B1E3F5C /* ChatSuggestionChips.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatSuggestionChips.swift; sourceTree = "<group>"; };
+		1AC4D658596A7B8C9D3E5F70 /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
 		4A7D867475FD1B0786535F22 /* SidePaneSectionHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidePaneSectionHeader.swift; sourceTree = "<group>"; };
 		4F885A1DA8B04DC5933DEC7F /* TimeChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeChip.swift; sourceTree = "<group>"; };
 		5DFB6A679AF6CD3F323A2061 /* MainChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainChatView.swift; sourceTree = "<group>"; };
@@ -200,8 +208,11 @@
 			isa = PBXGroup;
 			children = (
 				30D314ACEDACD16153B0B67B /* ChatBubbleView.swift */,
+				B4C8D0E2F30517293B5C7D9E /* ChatHeroView.swift */,
 				49FF6FDA9DF742429C1BD00A /* ChatInputBar.swift */,
+				D6E0F214152637485B9C1D3F /* ChatIntegrationsStrip.swift */,
 				401EA4D96285ECB2E8FCF4CF /* ChatMessageList.swift */,
+				F8A2B4363748596A7B1E3F5C /* ChatSuggestionChips.swift */,
 				D553FAF0228982500D63FA15 /* ContextAtomDetailSheet.swift */,
 				E2D2E9BE4D4C533924288E25 /* ContextSourceChip.swift */,
 				3972F4BAF73A302762CD1C71 /* FloatingChatPlaceholderView.swift */,
@@ -342,6 +353,7 @@
 			isa = PBXGroup;
 			children = (
 				E701567EF8C745CF8E672FEA /* AgentTypeBadge.swift */,
+				1AC4D658596A7B8C9D3E5F70 /* FlowLayout.swift */,
 				6A3F2ECB98A241AD4993AE71 /* LoadingIndicator.swift */,
 				19BD24DFCCBE7621D9ACD39E /* OrbitCard.swift */,
 				DC88DFFD58EC639E25DD4A4D /* SectionHeader.swift */,
@@ -434,8 +446,11 @@
 				C628FDA29B5B1E4FB7F81A88 /* AppViewModel.swift in Sources */,
 				116E9807DE921341DE29CF9E /* CaptureStatsView.swift in Sources */,
 				72E12224B5C858FF8B12BA7B /* ChatBubbleView.swift in Sources */,
+				A3B7C9E1F20486182A4B6C8D /* ChatHeroView.swift in Sources */,
 				0A99DA81141740971E627C55 /* ChatInputBar.swift in Sources */,
+				C5D9E1F3041527364A8B0C2E /* ChatIntegrationsStrip.swift in Sources */,
 				6DC189501FC8C13D71F766BF /* ChatMessage.swift in Sources */,
+				E7F1A325263748596A0D2E4B /* ChatSuggestionChips.swift in Sources */,
 				8CF6E35CA2025899BEC418AE /* ChatMessageList.swift in Sources */,
 				861DAAB01A94393126AC9C33 /* ChatStore.swift in Sources */,
 				CEE53E4794AEA52F46439B4F /* Color+Orbit.swift in Sources */,
@@ -449,6 +464,7 @@
 				D5666A22BB019A8CE0157B40 /* Date+Formatting.swift in Sources */,
 				C038811F8590AF86F466F280 /* Double+Rounding.swift in Sources */,
 				607B689219A17D9AAD4469D5 /* FindByAppFunction.swift in Sources */,
+				09B3C54748596A7B8C2D4E6F /* FlowLayout.swift in Sources */,
 				D8B698B508241172EED234D9 /* FloatingChatPlaceholderView.swift in Sources */,
 				D019CEAE876D90FFB22AA76E /* FloatingChatView.swift in Sources */,
 				E1845A6DB40964354DF3343E /* InsightSidebarView.swift in Sources */,

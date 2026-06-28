@@ -9,6 +9,13 @@ extension Color {
     static let orbitSecondaryTextDark = Color(hex: 0x8E8E93)
     static let orbitSecondaryTextLight = Color(hex: 0x6D6D72)
 
+    static let orbitChatBackgroundLight = Color(hex: 0xF9F8F3)
+    static let orbitChatBackgroundDark = Color(hex: 0x141414)
+
+    static func orbitChatBackground(for colorScheme: ColorScheme) -> Color {
+        colorScheme == .dark ? .orbitChatBackgroundDark : .orbitChatBackgroundLight
+    }
+
     static let orbitScoreRed = Color(hex: 0xEF4444)
     static let orbitScoreAmber = Color(hex: 0xF59E0B)
     static let orbitScoreLime = Color(hex: 0x84CC16)
