@@ -17,8 +17,8 @@ ensure_daemon() {
   (
     cd "$ROOT"
     source .venv/bin/activate
-    orbit start --no-embed --db ~/.orbit/orbit.db
-  ) >>"$DAEMON_LOG" 2>&1 &
+    orbit start --detach --no-embed --no-statusbar --db ~/.orbit/orbit.db
+  ) >>"$DAEMON_LOG" 2>&1
   local i
   for i in $(seq 1 10); do
     sleep 1
@@ -45,6 +45,13 @@ if [[ -d Resources/Assets.xcassets ]]; then
 fi
 chmod +x "$BUNDLE/Contents/MacOS/OrbitAccessApp"
 
+# Apply sandbox entitlements (direct ~/.orbit access, no Keychain bookmarks).
+ENTITLEMENTS="$APP_DIR/OrbitAccessApp.entitlements"
+if [[ -f "$ENTITLEMENTS" ]]; then
+  codesign --force --sign - --entitlements "$ENTITLEMENTS" --deep "$BUNDLE" 2>/dev/null \
+    || echo "Warning: codesign failed; app may lack sandbox entitlements." >&2
+fi
+
 echo "Launching $BUNDLE"
 open "$BUNDLE"
 
@@ -52,7 +59,7 @@ ORBIT_BIN="${ORBIT_ROOT}/.venv/bin/orbit"
 if [[ -x "$ORBIT_BIN" ]]; then
   if ! curl -sf http://127.0.0.1:8765/health >/dev/null 2>&1; then
     echo "Starting Orbit daemon…"
-    "$ORBIT_BIN" start --detach --no-embed || true
+    "$ORBIT_BIN" start --detach --no-embed --no-statusbar || true
     for _ in $(seq 1 40); do
       curl -sf http://127.0.0.1:8765/health >/dev/null 2>&1 && break
       sleep 0.25

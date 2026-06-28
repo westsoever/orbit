@@ -20,7 +20,7 @@ enum OrbitIssue: Equatable, Identifiable {
     var actionTitle: String? {
         switch self {
         case .databaseBootstrapFailed:
-            return "Select orbit.db"
+            return "Retry"
         }
     }
 }

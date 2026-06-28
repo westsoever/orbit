@@ -30,6 +30,7 @@
 		4A8D9955606A8A718FFDDF37 /* SearchStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFA44E7200DD3A74F9053B81 /* SearchStore.swift */; };
 		4B581F7CC71A44F9F38D1C07 /* TaskStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C8A67BC13F2BDAE382F14E4 /* TaskStore.swift */; };
 		4C446BDF5331FA91DBEF25A8 /* OrbitDBReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08B91B53D6299F5BAEC77042 /* OrbitDBReader.swift */; };
+		F3A2B1C0D9E8F7A6B5C4D3E2 /* OrbitSchemaInitializer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2D1C0B9A8F7E6D5C4B3A2F1 /* OrbitSchemaInitializer.swift */; };
 		4D848FF1005A1C87A9CAF7B3 /* TaskCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AF4267DCC4DB50AC3BEEC76 /* TaskCard.swift */; };
 		58A0FBDF10D7B40A1988DB30 /* ContextSourceChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2D2E9BE4D4C533924288E25 /* ContextSourceChip.swift */; };
 		58A23696B533F7AA0E29B24C /* WALWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E2399BC9CFEEC1E011907E6 /* WALWatcher.swift */; };
@@ -81,6 +82,7 @@
 		D8F9A023B4C5678901E2F314 /* AgentsDropdownMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentsDropdownMenu.swift; sourceTree = "<group>"; };
 		032AE3797CC1BDAD3FFA744A /* ChatMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatMessage.swift; sourceTree = "<group>"; };
 		08B91B53D6299F5BAEC77042 /* OrbitDBReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrbitDBReader.swift; sourceTree = "<group>"; };
+		E2D1C0B9A8F7E6D5C4B3A2F1 /* OrbitSchemaInitializer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrbitSchemaInitializer.swift; sourceTree = "<group>"; };
 		098A33C54672BC4FB781932A /* SidePaneSearchTrigger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidePaneSearchTrigger.swift; sourceTree = "<group>"; };
 		1EE0208CD9A5AEA1DE2203AE /* SidePaneDropdownTrigger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidePaneDropdownTrigger.swift; sourceTree = "<group>"; };
 		B8C4D0E2F603195729B3C5D7 /* SearchDropdownMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchDropdownMenu.swift; sourceTree = "<group>"; };
@@ -244,6 +246,7 @@
 				C6FF3B246A8AC2EB41EAEF84 /* OrbitBridgeClient.swift */,
 				145850CB63386EAFE0541391 /* OrbitBridgeProtocol.swift */,
 				08B91B53D6299F5BAEC77042 /* OrbitDBReader.swift */,
+				E2D1C0B9A8F7E6D5C4B3A2F1 /* OrbitSchemaInitializer.swift */,
 				1E2399BC9CFEEC1E011907E6 /* WALWatcher.swift */,
 			);
 			path = IPC;
@@ -477,6 +480,7 @@
 				5A6F642FE03FB40506066F45 /* OrbitBridgeProtocol.swift in Sources */,
 				5CC26487D6784CB4EF9EE554 /* OrbitCard.swift in Sources */,
 				4C446BDF5331FA91DBEF25A8 /* OrbitDBReader.swift in Sources */,
+				F3A2B1C0D9E8F7A6B5C4D3E2 /* OrbitSchemaInitializer.swift in Sources */,
 				7E76B0531299C47A4FF8489E /* ProductivityScore.swift in Sources */,
 				88CEF3A1FE23D286E270D586 /* ProductivityScoreGauge.swift in Sources */,
 				3E1125E88AB837160A092713 /* RecentCaptureList.swift in Sources */,

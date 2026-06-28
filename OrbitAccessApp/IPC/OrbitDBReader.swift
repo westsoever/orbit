@@ -1,28 +1,19 @@
 import Foundation
-import Security
-import AppKit
-import UniformTypeIdentifiers
 import GRDB
 
 enum OrbitDBError: LocalizedError {
-    case bookmarkMissing
-    case bookmarkStale
     case databaseUnavailable
-    case openPanelCancelled
+    case setupFailed(String)
 
     var errorDescription: String? {
         switch self {
-        case .bookmarkMissing: return "Orbit database bookmark not found."
-        case .bookmarkStale: return "Orbit database bookmark is stale."
         case .databaseUnavailable: return "Orbit database is unavailable."
-        case .openPanelCancelled: return "Database selection was cancelled."
+        case .setupFailed(let detail): return "Could not set up Orbit database: \(detail)"
         }
     }
 }
 
 final class OrbitDBReader: @unchecked Sendable {
-    private let keychainService = "com.orbit.access"
-    private let keychainAccount = "orbit-db-bookmark"
     private var accessURL: URL?
     private(set) var pool: DatabasePool?
 
@@ -30,21 +21,17 @@ final class OrbitDBReader: @unchecked Sendable {
 
     @MainActor
     func bootstrap() async throws {
-        if let url = resolveBookmarkURL() {
+        let url = OrbitPaths.databaseURL
+        do {
+            try OrbitPaths.ensureOrbitDirectoryExists()
+            try OrbitSchemaInitializer.createDatabaseIfNeeded(at: url)
+            accessURL = url
             try openDatabase(at: url)
-            return
+        } catch let error as OrbitDBError {
+            throw error
+        } catch {
+            throw OrbitDBError.setupFailed(error.localizedDescription)
         }
-        let defaultURL = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".orbit/orbit.db")
-        if FileManager.default.fileExists(atPath: defaultURL.path) {
-            let url = try await promptForDatabase(defaultURL: defaultURL)
-            try storeBookmark(for: url)
-            try openDatabase(at: url)
-            return
-        }
-        let url = try await promptForDatabase(defaultURL: defaultURL)
-        try storeBookmark(for: url)
-        try openDatabase(at: url)
     }
 
     func read<T>(_ block: (Database) throws -> T) throws -> T {
@@ -244,6 +231,54 @@ final class OrbitDBReader: @unchecked Sendable {
         accessURL?.deletingLastPathComponent().appendingPathComponent("orbit.db-wal")
     }
 
+    /// Pending tasks for today — SQL from orbit/check/log.py get_pending_today
+    func fetchPendingTasksToday(reportDate: String? = nil) throws -> [TaskLogEntry] {
+        let date = reportDate ?? Self.localTodayISO()
+        do {
+            return try fetchPendingTasksTodayRows(includeDescription: true, reportDate: date)
+        } catch {
+            return try fetchPendingTasksTodayRows(includeDescription: false, reportDate: date)
+        }
+    }
+
+    private func fetchPendingTasksTodayRows(includeDescription: Bool, reportDate: String) throws -> [TaskLogEntry] {
+        try read { db in
+            let sql: String
+            if includeDescription {
+                sql = """
+                    SELECT id, title, description, original_prompt, agent_type
+                    FROM task_log
+                    WHERE status = 'detected' AND date(timestamp) = ?
+                    """
+            } else {
+                sql = """
+                    SELECT id, title, original_prompt, agent_type
+                    FROM task_log
+                    WHERE status = 'detected' AND date(timestamp) = ?
+                    """
+            }
+            let rows = try Row.fetchAll(db, sql: sql, arguments: [reportDate])
+            return rows.map { row in
+                TaskLogEntry(
+                    id: row["id"],
+                    title: row["title"],
+                    description: includeDescription ? row["description"] : nil,
+                    originalPrompt: row["original_prompt"],
+                    agentType: row["agent_type"],
+                    status: "detected"
+                )
+            }
+        }
+    }
+
+    private static func localTodayISO() -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar.current
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: Date())
+    }
+
     private static func searchHit(from row: Row) -> SearchHit {
         SearchHit(
             atomId: row["atom_id"],
@@ -261,80 +296,9 @@ final class OrbitDBReader: @unchecked Sendable {
         )
     }
 
-    private func resolveBookmarkURL() -> URL? {
-        guard let data = KeychainHelper.load(service: keychainService, account: keychainAccount) else {
-            return nil
-        }
-        var isStale = false
-        guard let url = try? URL(
-            resolvingBookmarkData: data,
-            options: .withSecurityScope,
-            relativeTo: nil,
-            bookmarkDataIsStale: &isStale
-        ) else {
-            return nil
-        }
-        if isStale, let refreshed = try? url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil) {
-            KeychainHelper.save(refreshed, service: keychainService, account: keychainAccount)
-        }
-        _ = url.startAccessingSecurityScopedResource()
-        accessURL = url
-        return url
-    }
-
-    @MainActor
-    private func promptForDatabase(defaultURL: URL) async throws -> URL {
-        let panel = NSOpenPanel()
-        panel.title = "Select Orbit Database"
-        panel.message = "Choose orbit.db from your ~/.orbit directory."
-        panel.canChooseFiles = true
-        panel.canChooseDirectories = false
-        panel.allowsMultipleSelection = false
-        panel.allowedContentTypes = [.data]
-        panel.nameFieldStringValue = "orbit.db"
-        panel.directoryURL = defaultURL.deletingLastPathComponent()
-        guard panel.runModal() == .OK, let url = panel.url else {
-            throw OrbitDBError.openPanelCancelled
-        }
-        return url
-    }
-
-    private func storeBookmark(for url: URL) throws {
-        let data = try url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
-        KeychainHelper.save(data, service: keychainService, account: keychainAccount)
-        _ = url.startAccessingSecurityScopedResource()
-        accessURL = url
-    }
-
     private func openDatabase(at url: URL) throws {
         var config = Configuration()
         config.readonly = true
         pool = try DatabasePool(path: url.path, configuration: config)
-    }
-}
-
-private enum KeychainHelper {
-    static func save(_ data: Data, service: String, account: String) {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-        ]
-        SecItemDelete(query as CFDictionary)
-        var add = query
-        add[kSecValueData as String] = data
-        SecItemAdd(add as CFDictionary, nil)
-    }
-
-    static func load(service: String, account: String) -> Data? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-            kSecReturnData as String: true,
-        ]
-        var item: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess else { return nil }
-        return item as? Data
     }
 }
