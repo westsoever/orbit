@@ -266,7 +266,7 @@ InsightSidebarView
 │        ├─ body:   description (truncated, tap to expand)
 │        └─ actions: ApproveButton · SkipButton
 ├─ SectionHeader("TODAY'S SCHEDULE")
-│  └─ DailyScheduleTimeline                // context_events grouped by hour
+│  └─ CalendarScheduleView                 // calendar events for today (EventKit, Phase 4C)
 ├─ SectionHeader("ROUTINES")
 │  └─ RoutineList                          // user-configured recurring blocks
 └─ SectionHeader("CONTEXT STREAM")
@@ -274,13 +274,7 @@ InsightSidebarView
 ```
 
 - **`TaskCard`** — `OrbitCard` with a left accent bar colored by agent type. **Approve** → `POST /api/task/{id}/approve` (body `{"approved_prompt": …}`); on success the card animates out (`.move(edge: .trailing).combined(with: .opacity)`). **Skip** → `/skip`. Both disabled in offline mode.
-- **`DailyScheduleTimeline`** — vertical timeline of `HourSlot`s built from:
-  ```sql
-  SELECT strftime('%H', timestamp) AS hour, app_name, COUNT(*) AS events
-  FROM context_events
-  WHERE date(timestamp) = date('now')
-  GROUP BY hour, app_name ORDER BY hour;
-  ```
+- **`CalendarScheduleView`** — calendar events for today (EventKit, Phase 4C). Until connected: shows "No calendar connected" placeholder.
 - **`RecentCaptureList`** — incremental tail (`id > lastSeenId`) refreshed by the WAL watcher.
 
 ---
@@ -597,7 +591,7 @@ OrbitAccessApp/
 │  │               ChatBubbleView.swift  ChatInputBar.swift  ContextSourceChip.swift
 │  │               ContextAtomDetailSheet.swift  FloatingChatPlaceholderView.swift
 │  ├─ InsightSidebar/  InsightSidebarView.swift  ProductivityScoreGauge.swift
-│  │                   TaskCard.swift  TaskCardList.swift  DailyScheduleTimeline.swift
+│  │                   TaskCard.swift  TaskCardList.swift  CalendarScheduleView.swift
 │  │                   RoutineList.swift  RecentCaptureList.swift
 │  ├─ StatusBar/   StatusBarController.swift  StatusBarPopoverView.swift
 │  └─ Components/   OrbitCard.swift  SectionHeader.swift  AgentTypeBadge.swift

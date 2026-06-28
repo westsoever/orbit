@@ -191,19 +191,6 @@ final class OrbitDBReader: @unchecked Sendable {
         }
     }
 
-    func fetchDailySchedule() throws -> [HourSlot] {
-        try read { db in
-            let rows = try Row.fetchAll(db, sql: """
-                SELECT strftime('%H', timestamp) AS hour, app_name, COUNT(*) AS events
-                FROM context_events
-                WHERE date(timestamp) = date('now')
-                GROUP BY hour, app_name
-                ORDER BY hour
-                """)
-            return rows.map { HourSlot(hour: $0["hour"], appName: $0["app_name"] ?? "Unknown", eventCount: $0["events"]) }
-        }
-    }
-
     func computeScoreInputs() throws -> ScoreInputs {
         try read { db in
             let taskRow = try Row.fetchOne(db, sql: """
