@@ -1,5 +1,0 @@
-macapptree==0.0.2
-pyobjc-framework-Cocoa>=10.3.1
-Pillow
-sqlite-vec==0.1.9
-sentence-transformers>=3.0

@@ -8,3 +8,5 @@ __pycache__/
 *.db-shm
 .env
 .orbit-test-tmp/
+.claude-flow/
+.DS_Store
