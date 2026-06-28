@@ -12,6 +12,6 @@ OrbitAccessApp/.build/
 OrbitAccessApp/.swiftpm/
 OrbitAccessApp/OrbitAccessApp.app/
 OrbitAccessApp/.tmp/
-build/OrbitAccessApp.app/
+build/
 .claude-flow/
 .DS_Store
