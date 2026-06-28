@@ -25,6 +25,7 @@ let package = Package(
                 "OrbitAccessApp.entitlements",
                 "Resources/Info.plist",
                 "Resources/Info.bundle.plist",
+                "Resources/orbit-icon.svg",
                 "Package.swift",
             ],
             sources: [
