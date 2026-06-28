@@ -39,13 +39,12 @@ final class DaemonManager {
 
     func resolveOrbitBinary() throws -> URL {
         let fm = FileManager.default
-        let home = fm.homeDirectoryForCurrentUser
 
         var candidates: [URL] = []
+        candidates.append(URL(fileURLWithPath: "/Applications/Orbit.app/Contents/Resources/orbit"))
         if let root = ProcessInfo.processInfo.environment["ORBIT_ROOT"] {
             candidates.append(URL(fileURLWithPath: root).appendingPathComponent(".venv/bin/orbit"))
         }
-        candidates.append(home.appendingPathComponent("gitall/orbit/.venv/bin/orbit"))
         candidates.append(URL(fileURLWithPath: "/opt/homebrew/bin/orbit"))
 
         for url in candidates where fm.isExecutableFile(atPath: url.path) {
@@ -231,7 +230,16 @@ final class DaemonManager {
         }
     }
 
-    private static func inferOrbitRoot(from binary: URL) -> String? {
+    private nonisolated static func inferOrbitRoot(from binary: URL) -> String? {
+        if binary.lastPathComponent == "orbit" {
+            let resources = binary.deletingLastPathComponent()
+            if resources.lastPathComponent == "Resources" {
+                let core = resources.appendingPathComponent("orbit-core")
+                if FileManager.default.fileExists(atPath: core.path) {
+                    return core.path
+                }
+            }
+        }
         let venvBin = binary.deletingLastPathComponent()
         guard venvBin.lastPathComponent == "bin", venvBin.deletingLastPathComponent().lastPathComponent == ".venv" else {
             return nil

@@ -17,6 +17,9 @@ dependencies = [
 where = ["."]
 include = ["orbit*"]
 
+[tool.setuptools.package-data]
+orbit = ["storage/schema.sql"]
+
 [project.scripts]
 orbit = "orbit.cli:main"
 

@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 # Build and launch Orbit Access (SwiftUI macOS app).
 set -euo pipefail
+
+if [[ -d "/Applications/Orbit.app" && "${ORBIT_FORCE_DEV_BUILD:-}" != "1" ]]; then
+  echo "Orbit is installed in /Applications."
+  echo "Launch with: open -a Orbit"
+  echo "Set ORBIT_FORCE_DEV_BUILD=1 to build from this repo instead."
+  open -a Orbit 2>/dev/null || true
+  exit 0
+fi
+
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 export ORBIT_ROOT="$ROOT"
 APP_DIR="$ROOT/OrbitAccessApp"

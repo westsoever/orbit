@@ -6,6 +6,57 @@ Always-on agentic system for macOS. Captures working context via the Accessibili
 
 ---
 
+## Install
+
+### macOS
+
+**macOS 14+.** Requires [Homebrew](https://brew.sh) for the first install (Python 3.13).
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/westsoever/orbit/main/scripts/install.sh | bash
+```
+
+Installs **Orbit** to `/Applications`. Run `orbit` from the terminal or open the app from Spotlight.
+
+Grant **Accessibility** to Orbit before capture works ([permissions guide](orbit/capture/PERMISSIONS.md)).
+
+```bash
+orbit doctor                      # verify embedded Python + SQLite
+orbit start --detach --no-embed   # optional: start daemon from Terminal
+```
+
+User data: `~/.orbit/` (database, policy, logs).
+
+**Uninstall:** `rm -rf /Applications/Orbit.app /usr/local/bin/orbit` (add `rm -rf ~/.orbit` to delete captured data).
+
+**Release install (pre-built zip, when available):** `ORBIT_VERSION=0.0.1 ORBIT_INSTALL_FROM_SOURCE=0 curl -fsSL …/install.sh | bash`
+
+---
+
+## Development
+
+Clone the repo and use an editable install for hacking on capture, search, or the Swift UI:
+
+```bash
+git clone https://github.com/westsoever/orbit.git
+cd orbit
+brew install python@3.13
+/opt/homebrew/bin/python3.13 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+bash scripts/run_orbit_access_app.sh   # build + launch dev app (skips if /Applications/Orbit.app exists)
+```
+
+Embeddings need Homebrew Python (not the python.org installer):
+
+```bash
+python -c "import sqlite3; sqlite3.connect(':memory:').enable_load_extension(True)"
+```
+
+Grant Accessibility to Terminal or your IDE. See `orbit/capture/PERMISSIONS.md`.
+
+---
+
 ## What it does
 
 1. **Capture** — Event-driven app-focus listener walks the active window's `AXUIElement` tree and stores structured text atoms in SQLite. Tiered fallbacks cover Electron apps, browsers, file workspace events, and opt-in OCR.
@@ -89,10 +140,11 @@ Daemon log (detached mode): `~/.orbit/daemon.log`
 
 ## Orbit Access App
 
-Native SwiftUI macOS frontend (`OrbitAccessApp/`) for browsing captured context, hybrid search, chat, and task approval. It reads SQLite directly for history and talks to the Python daemon over the local HTTP bridge.
+Native SwiftUI macOS frontend (`OrbitAccessApp/`) for browsing captured context, hybrid search, chat, and task approval. Installed users open **Orbit** from `/Applications`; developers use `scripts/run_orbit_access_app.sh`.
 
 ```bash
-bash scripts/run_orbit_access_app.sh   # build + launch; auto-starts daemon if down
+open -a Orbit                        # installed app
+bash scripts/run_orbit_access_app.sh   # dev: build from repo (ORBIT_FORCE_DEV_BUILD=1 if /Applications/Orbit.app exists)
 ```
 
 **Daemon controls in the UI**
@@ -106,22 +158,7 @@ The app polls `GET /api/status` every 5 seconds. When offline, chat send and hyb
 
 Design reference: `plans/orbitaccessappdesign.md`
 
-Requires **macOS 14+**, **Python 3.10+**, and **Accessibility** permission for Terminal/Python.
-
-Embeddings need a Python build with loadable SQLite extensions (Homebrew Python; not the python.org installer):
-
-```bash
-brew install python@3.13
-/opt/homebrew/bin/python3.13 -m venv .venv
-source .venv/bin/activate
-pip install -e .
-
-# Verify — use venv `python`, not system `python3`:
-python -c "import sqlite3; sqlite3.connect(':memory:').enable_load_extension(True)"
-which orbit   # .../orbit/.venv/bin/orbit
-```
-
-Grant Accessibility: System Settings → Privacy & Security → Accessibility → enable Terminal (or your IDE). See `orbit/capture/PERMISSIONS.md` for browsers, OCR, and FSEvents.
+Requires **macOS 14+** and **Accessibility** permission for Orbit (or Terminal when using the CLI).
 
 ---
 

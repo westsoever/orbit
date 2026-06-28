@@ -8,7 +8,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusBarController: StatusBarController?
 
     func applicationWillFinishLaunching(_ notification: Notification) {
+        configureInstalledOrbitRoot()
         _ = enforceSingleInstance()
+    }
+
+    private func configureInstalledOrbitRoot() {
+        guard ProcessInfo.processInfo.environment["ORBIT_ROOT"] == nil,
+              let root = OrbitPaths.defaultOrbitRoot() else { return }
+        setenv("ORBIT_ROOT", root, 1)
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
