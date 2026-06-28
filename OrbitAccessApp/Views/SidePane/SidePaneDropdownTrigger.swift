@@ -4,8 +4,9 @@ struct SidePaneDropdownTrigger<MenuContent: View>: View {
     let title: String
     let icon: String
     var iconColor: Color = Color.orbitAccent
-    var backgroundColor: Color = Color.primary.opacity(0.04)
     @ViewBuilder let menuContent: () -> MenuContent
+
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         Menu {
@@ -27,7 +28,8 @@ struct SidePaneDropdownTrigger<MenuContent: View>: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
-            .background(backgroundColor, in: RoundedRectangle(cornerRadius: 8))
+            .background(Color.clear, in: RoundedRectangle(cornerRadius: OrbitShape.radiusControl))
+            .orbitHairlineBorder(cornerRadius: OrbitShape.radiusControl, colorScheme: colorScheme)
             .contentShape(Rectangle())
         }
         .menuStyle(.borderlessButton)

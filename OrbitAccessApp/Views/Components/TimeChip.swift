@@ -11,6 +11,6 @@ struct TimeChip: View {
             .foregroundStyle(Color.orbitSecondaryText(for: colorScheme))
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
-            .background(Color.primary.opacity(0.06), in: Capsule())
+            .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: OrbitShape.radiusControl))
     }
 }

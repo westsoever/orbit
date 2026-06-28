@@ -53,17 +53,14 @@ struct TaskCard: View {
             Button("Approve") {
                 approveTask()
             }
-            .buttonStyle(.borderedProminent)
-            .tint(agentType.color)
-            .controlSize(.small)
+            .buttonStyle(OrbitFlatButtonStyle(variant: .primary))
             .disabled(!model.canUseLiveServices)
             .help(model.canUseLiveServices ? "Approve task" : "Start daemon to approve")
 
             Button("Skip") {
                 skipTask()
             }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
+            .buttonStyle(OrbitFlatButtonStyle(variant: .secondary))
             .disabled(!model.canUseLiveServices)
             .help(model.canUseLiveServices ? "Skip task" : "Start daemon to skip")
 

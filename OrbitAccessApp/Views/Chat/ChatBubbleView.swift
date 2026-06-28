@@ -5,6 +5,8 @@ struct ChatBubbleView: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var selectedAtom: SearchHit?
 
+    private let bubbleRadius = OrbitShape.radiusCard
+
     var body: some View {
         HStack {
             if message.role == .user { Spacer(minLength: 60) }
@@ -27,15 +29,13 @@ struct ChatBubbleView: View {
                 .padding(.vertical, 10)
                 .background {
                     if message.role == .user {
-                        RoundedRectangle(cornerRadius: 12).fill(Color.orbitAccent)
-                    } else if colorScheme == .dark {
-                        RoundedRectangle(cornerRadius: 12).fill(.regularMaterial)
+                        RoundedRectangle(cornerRadius: bubbleRadius).fill(Color.orbitAccent)
                     } else {
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.orbitCardLight)
+                        RoundedRectangle(cornerRadius: bubbleRadius)
+                            .fill(colorScheme == .dark ? Color.orbitCardDark : Color.orbitCardLight)
                             .overlay(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(Color.orbitCardBorderLight, lineWidth: 1)
+                                RoundedRectangle(cornerRadius: bubbleRadius)
+                                    .stroke(Color.orbitBorderHairline(for: colorScheme), lineWidth: OrbitShape.borderHairlineWidth)
                             )
                     }
                 }

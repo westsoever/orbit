@@ -16,7 +16,7 @@ struct ContextSourceChip: View {
             .foregroundStyle(Color.orbitAccent)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            .background(Color.orbitAccent.opacity(0.1), in: Capsule())
+            .background(Color.orbitAccent.opacity(0.1), in: RoundedRectangle(cornerRadius: OrbitShape.radiusChip))
         }
         .buttonStyle(.plain)
     }

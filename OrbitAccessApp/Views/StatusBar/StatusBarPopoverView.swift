@@ -5,7 +5,7 @@ struct StatusBarPopoverView: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text("Orbit")
                     .font(.headline)
@@ -13,9 +13,15 @@ struct StatusBarPopoverView: View {
                 Spacer()
                 statusDot
             }
+            .padding(.bottom, 12)
+
+            OrbitHairlineDivider(horizontalPadding: 0)
 
             ProductivityScoreGauge(score: model.insightStore.productivityScore.value)
                 .scaleEffect(0.85)
+                .padding(.vertical, 12)
+
+            OrbitHairlineDivider(horizontalPadding: 0)
 
             HStack {
                 Label("\(model.taskStore.pendingTasks.count) tasks", systemImage: "checklist")
@@ -29,39 +35,44 @@ struct StatusBarPopoverView: View {
                         .lineLimit(1)
                 }
             }
+            .padding(.vertical, 12)
 
-            Button("Open Orbit") {
-                NotificationCenter.default.post(name: .openMainWindow, object: nil)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(Color.orbitAccent)
-            .frame(maxWidth: .infinity)
+            OrbitHairlineDivider(horizontalPadding: 0)
 
-            HStack(spacing: 8) {
-                if isTransitioning {
-                    ProgressView()
-                        .controlSize(.small)
+            VStack(spacing: 8) {
+                Button("Open Orbit") {
+                    NotificationCenter.default.post(name: .openMainWindow, object: nil)
+                }
+                .buttonStyle(OrbitFlatButtonStyle(variant: .primary))
+
+                HStack(spacing: 8) {
+                    if isTransitioning {
+                        ProgressView()
+                            .controlSize(.small)
+                            .frame(maxWidth: .infinity)
+                    } else if model.isDaemonOnline {
+                        Button("Stop daemon") {
+                            Task { await model.stopDaemon() }
+                        }
+                        .buttonStyle(OrbitFlatButtonStyle(variant: .secondary))
                         .frame(maxWidth: .infinity)
-                } else if model.isDaemonOnline {
-                    Button("Stop daemon") {
-                        Task { await model.stopDaemon() }
+                    } else {
+                        Button("Start daemon") {
+                            Task { await model.startDaemon() }
+                        }
+                        .buttonStyle(OrbitFlatButtonStyle(variant: .primary))
+                        .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.bordered)
-                } else {
-                    Button("Start daemon") {
-                        Task { await model.startDaemon() }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(Color.orbitAccent)
                 }
             }
-            .frame(maxWidth: .infinity)
+            .padding(.top, 12)
 
             if case .error(let message) = model.daemonControlState {
                 Text(message)
                     .font(.caption2)
                     .foregroundStyle(Color.red)
                     .lineLimit(2)
+                    .padding(.top, 8)
             }
         }
         .padding(16)

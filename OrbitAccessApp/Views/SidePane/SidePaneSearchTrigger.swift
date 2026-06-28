@@ -5,6 +5,8 @@ struct SidePaneSearchTrigger: View {
     let icon: String
     let action: () -> Void
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: 8) {
@@ -20,7 +22,8 @@ struct SidePaneSearchTrigger: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
-            .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
+            .background(Color.clear, in: RoundedRectangle(cornerRadius: OrbitShape.radiusControl))
+            .orbitHairlineBorder(cornerRadius: OrbitShape.radiusControl, colorScheme: colorScheme)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

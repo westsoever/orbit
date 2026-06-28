@@ -25,7 +25,7 @@ struct ProductivityScoreGauge: View {
                 .frame(width: 120, height: 72)
 
                 Text(String(format: "%.1f", animatedScore))
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                    .font(.system(size: 32, weight: .bold, design: .default))
                     .foregroundStyle(color)
             }
 

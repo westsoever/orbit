@@ -21,7 +21,7 @@ struct AgentShortcutRow: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
-            .background(agentType.color.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+            .background(agentType.color.opacity(0.06), in: RoundedRectangle(cornerRadius: OrbitShape.radiusControl))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

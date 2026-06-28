@@ -6,20 +6,20 @@ struct SidebaneView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                SidePaneSectionHeader(title: "SEARCH")
+                SidePaneSectionHeader(title: "Search")
                 if model.searchStore.panelActive {
                     SidebaneSearchPanel()
                 }
                 SearchDropdownMenu()
 
-                SidePaneSectionHeader(title: "AGENTS")
+                SidePaneSectionHeader(title: "Agents")
                 AgentsDropdownMenu()
 
-                SidePaneSectionHeader(title: "CAPTURE")
+                SidePaneSectionHeader(title: "Capture")
                 DaemonStatusIndicator()
                 CaptureStatsView()
 
-                SidePaneSectionHeader(title: "PRIVACY")
+                SidePaneSectionHeader(title: "Privacy")
                 PrivacyPolicyLink()
             }
             .padding(.horizontal, 12)

@@ -17,19 +17,12 @@ struct OrbitCard<Content: View>: View {
                 .padding(12)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .background(cardSurface, in: RoundedRectangle(cornerRadius: 12))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(cardBorder, lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.04), radius: 2, y: 1)
+        .background(cardSurface, in: RoundedRectangle(cornerRadius: OrbitShape.radiusCard))
+        .orbitHairlineBorder(cornerRadius: OrbitShape.radiusCard, colorScheme: colorScheme)
     }
 
     private var cardSurface: Color {
         colorScheme == .dark ? .orbitCardDark : .orbitCardLight
     }
 
-    private var cardBorder: Color {
-        colorScheme == .dark ? .orbitCardBorderDark : .orbitCardBorderLight
-    }
 }

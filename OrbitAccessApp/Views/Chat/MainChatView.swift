@@ -23,15 +23,14 @@ struct MainChatView: View {
 
     private var landingView: some View {
         VStack {
-            Spacer(minLength: 40)
+            Spacer(minLength: 32)
             ChatHeroView()
-            Spacer(minLength: 24)
+            Spacer(minLength: 20)
             VStack(spacing: 12) {
                 ChatInputBar(showSpinOff: true, isCompact: false)
                 if model.canBrowseContext && !model.canUseAIChat {
                     offlineModeBadge
                 }
-                ChatSuggestionChips()
             }
             .padding(.horizontal, 24)
             Spacer()
@@ -53,7 +52,6 @@ struct MainChatView: View {
             }
 
             ChatInputBar(showSpinOff: true, isCompact: true)
-                .shadow(color: .black.opacity(0.04), radius: 2, y: 1)
                 .padding(.horizontal, 16)
 
             if model.canBrowseContext && !model.canUseAIChat {

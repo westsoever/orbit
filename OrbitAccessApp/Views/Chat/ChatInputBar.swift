@@ -24,21 +24,24 @@ struct ChatInputBar: View {
             .onSubmit { sendMessage() }
             .padding(.horizontal, 16)
             .padding(.top, 12)
-            .padding(.bottom, isCompact ? 8 : 12)
-            .frame(minHeight: isCompact ? 44 : 80, alignment: .top)
+            .padding(.bottom, 8)
+            .frame(minHeight: isCompact ? 44 : 72, alignment: .top)
 
-            Divider()
-                .padding(.horizontal, 12)
+            OrbitHairlineDivider()
 
             toolbarRow
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
+
+            if !isCompact {
+                OrbitHairlineDivider()
+                ChatSuggestionChips()
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+            }
         }
-        .background(cardSurface, in: RoundedRectangle(cornerRadius: 16))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(cardBorder, lineWidth: 1)
-        )
+        .background(cardSurface, in: RoundedRectangle(cornerRadius: OrbitShape.radiusCard))
+        .orbitHairlineBorder(cornerRadius: OrbitShape.radiusCard, colorScheme: colorScheme)
         .onChange(of: model.chatStore.focusRequested) { _, requested in
             if requested {
                 isFocused = true
@@ -55,10 +58,9 @@ struct ChatInputBar: View {
 
             if !isCompact {
                 ChatIntegrationsStrip()
-                    .frame(maxWidth: .infinity)
-            } else {
-                Spacer(minLength: 0)
             }
+
+            Spacer(minLength: 0)
 
             HStack(spacing: 8) {
                 if showSpinOff {
@@ -71,11 +73,11 @@ struct ChatInputBar: View {
 
     private var attachButton: some View {
         Button {} label: {
-            Image(systemName: "plus")
+            Image(systemName: "paperclip")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(Color.orbitSecondaryText(for: colorScheme))
                 .frame(width: 28, height: 28)
-                .background(Color.orbitSecondaryText(for: colorScheme).opacity(0.12), in: Circle())
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(true)
@@ -104,7 +106,7 @@ struct ChatInputBar: View {
                 .frame(width: 32, height: 32)
                 .background(
                     canSend ? Color(white: 0.15) : Color.orbitSecondaryText(for: colorScheme),
-                    in: Circle()
+                    in: RoundedRectangle(cornerRadius: OrbitShape.radiusChip)
                 )
         }
         .buttonStyle(.plain)
@@ -132,10 +134,6 @@ struct ChatInputBar: View {
 
     private var cardSurface: Color {
         colorScheme == .dark ? .orbitCardDark : .orbitCardLight
-    }
-
-    private var cardBorder: Color {
-        colorScheme == .dark ? .orbitCardBorderDark : .orbitCardBorderLight
     }
 
     private var canSend: Bool {

@@ -38,7 +38,7 @@ struct ThreePaneLayout: View {
                 pane.view
                     .frame(minWidth: pane.preferredWidth, idealWidth: pane.preferredWidth)
                 if pane.id != panes.last?.id {
-                    Divider()
+                    OrbitPaneHairline()
                 }
             }
         }

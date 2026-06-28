@@ -44,7 +44,6 @@ struct RecentCaptureList: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
-        .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 8))
     }
 
     private func formatTimestamp(_ timestamp: String) -> String {

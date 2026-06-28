@@ -492,18 +492,19 @@ zero view changes.
 
 ---
 
-## 8. UI / design system (Littlebird.ai cues)
+## 8. UI / design system (Mistral-calm / Vercel-flat)
 
-Mirrors the existing `dashboard.html`: zinc surfaces, uppercase wide-tracked section
-headers, rounded cards, soft shadows, indigo accent.
+Calm, seamless native UI: warm chat center pane, flat cards with hairline borders, no drop shadows, sentence-case section headers. Indigo accent on interactive elements. See `plans/11-mistral-calm-ui-revamp.md` for the full revamp spec.
 
 ### 8.1 Color palette
 
 | Token | Dark | Light |
 |---|---|---|
-| Background | `windowBackgroundColor` (adaptive) | `windowBackgroundColor` |
+| Chat background | `#141414` (`orbitChatBackgroundDark`) | `#F9F8F3` (`orbitChatBackgroundLight`) |
+| Side pane background | `windowBackgroundColor` (adaptive) | `windowBackgroundColor` |
 | Card surface | `#1C1C1E` | `#FFFFFF` |
-| Card border | `#2C2C2E` | `#E5E5EA` |
+| Card border | hairline `primary @ 8%` | hairline `primary @ 8%` |
+| Muted surface | `primary @ 4%` | `primary @ 4%` |
 | Primary text | `.primary` | `.primary` |
 | Secondary text | `#8E8E93` | `#6D6D72` |
 | Accent | `#636AFF` (indigo) | `#636AFF` |
@@ -517,38 +518,47 @@ admin `#E67E22` · data `#00B5D8` · communication `#5B73E8`.
 | Role | Font | Size · Weight |
 |---|---|---|
 | Window title | `.headline` | 15 semibold |
-| Section header | `.caption` | 11 semibold, **UPPERCASE**, `.tracking(1.2)` |
+| Section header | `.caption` | 11 semibold, sentence case, `.tracking(0.6)` |
+| Chat hero | `.system` | 26 medium |
 | Card title | `.body` | 14 medium |
 | Card body | `.callout` | 13 regular |
 | Chat message | `.body` | 14 regular |
 | Metadata / time | `.caption2` | 11 regular |
-| Score number | `.system(size: 32, weight: .bold, design: .rounded)` | 32 bold |
+| Score number | `.system(size: 32, weight: .bold, design: .default)` | 32 bold |
 | Badge | `.caption2` | 10 medium |
 
-Apply `.kerning(-0.1)` to body/title text for the tighter Littlebird feel.
+Apply `.kerning(-0.1)` to body/title text for the tighter feel.
 
 ### 8.3 Spacing & shape tokens
 
-Card padding **12** · card radius **12** · inter-card gap **8** · section-header→card **6** ·
-pane horizontal padding **12** · pane top padding **16** · divider `1 pt Divider()` (no drag handle).
+Implemented in `Extensions/OrbitShape.swift`:
+
+| Token | Value |
+|---|---|
+| Card radius (`radiusCard`) | **8** |
+| Chip radius (`radiusChip`) | **6** |
+| Control radius (`radiusControl`) | **4** |
+| Hairline border | **0.5 pt** at `primary @ 8%` |
+| Card padding | **12** |
+| Inter-card gap | **8** |
+| Section-header→card | **6** |
+| Pane horizontal padding | **12** |
+| Pane top padding | **16** |
+| Pane / in-card divider | `OrbitHairlineDivider` / `OrbitPaneHairline` |
+
+**No card drop shadows.** Do not use `Capsule()` for chips or badges.
 
 ### 8.4 Reusable card shell
 
 ```swift
-struct OrbitCard<Content: View>: View {
-    var accent: Color = .clear
-    @ViewBuilder var content: () -> Content
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if accent != .clear { accent.frame(width: 3) }   // left accent bar
-            content().padding(12)
-        }
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(.primary.opacity(0.06), lineWidth: 1))
-        .shadow(color: .black.opacity(0.04), radius: 2, y: 1)
-    }
-}
+// OrbitCard.swift — flat card, hairline border, 8pt radius
+.background(cardSurface, in: RoundedRectangle(cornerRadius: OrbitShape.radiusCard))
+.orbitHairlineBorder(cornerRadius: OrbitShape.radiusCard, colorScheme: colorScheme)
 ```
+
+### 8.5 Unified chat input card
+
+Landing mode: `ChatInputBar` composes TextField → toolbar (paperclip, icon pill, send) → horizontal suggestion chips, all inside one card. Conversation/floating modes use compact variant without suggestion row. Send button uses `RoundedRectangle(cornerRadius: 6)` near-black fill.
 
 ### 8.5 Animations
 

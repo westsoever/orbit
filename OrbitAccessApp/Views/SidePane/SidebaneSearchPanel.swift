@@ -19,7 +19,8 @@ struct SidebaneSearchPanel: View {
                 .disabled(model.searchStore.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
             .padding(10)
-            .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
+            .background(Color.clear, in: RoundedRectangle(cornerRadius: OrbitShape.radiusControl))
+            .orbitHairlineBorder(cornerRadius: OrbitShape.radiusControl, colorScheme: colorScheme)
 
             if model.searchStore.isSearching {
                 LoadingIndicator()

@@ -20,8 +20,7 @@ struct FloatingChatPlaceholderView: View {
             Button("Return to main window") {
                 returnToMainWindow()
             }
-            .buttonStyle(.borderedProminent)
-            .tint(Color.orbitAccent)
+            .buttonStyle(OrbitFlatButtonStyle(variant: .primary))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(32)

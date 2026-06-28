@@ -79,15 +79,12 @@ struct DaemonStatusIndicator: View {
             Button("Stop") {
                 Task { await model.stopDaemon() }
             }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
+            .buttonStyle(OrbitFlatButtonStyle(variant: .secondary))
         } else {
             Button("Start") {
                 Task { await model.startDaemon() }
             }
-            .buttonStyle(.borderedProminent)
-            .tint(Color.orbitAccent)
-            .controlSize(.small)
+            .buttonStyle(OrbitFlatButtonStyle(variant: .primary))
         }
     }
 

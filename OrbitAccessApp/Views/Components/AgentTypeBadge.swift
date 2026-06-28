@@ -13,6 +13,6 @@ struct AgentTypeBadge: View {
         .foregroundStyle(agentType.color)
         .padding(.horizontal, 8)
         .padding(.vertical, 3)
-        .background(agentType.color.opacity(0.12), in: Capsule())
+        .background(agentType.color.opacity(0.12), in: RoundedRectangle(cornerRadius: OrbitShape.radiusControl))
     }
 }

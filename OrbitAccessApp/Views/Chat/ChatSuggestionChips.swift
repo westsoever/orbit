@@ -38,12 +38,14 @@ struct ChatSuggestionChips: View {
     }
 
     var body: some View {
-        FlowLayout(spacing: 8) {
-            ForEach(Array(visibleSuggestions.enumerated()), id: \.offset) { _, text in
-                suggestionChip(text)
-            }
-            if showMoreButton {
-                moreSuggestionsChip
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(Array(visibleSuggestions.enumerated()), id: \.offset) { _, text in
+                    suggestionChip(text)
+                }
+                if showMoreButton {
+                    moreSuggestionsChip
+                }
             }
         }
     }
@@ -55,10 +57,14 @@ struct ChatSuggestionChips: View {
         } label: {
             Text(text)
                 .font(.callout)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .background(chipFill, in: Capsule())
-                .overlay(Capsule().stroke(chipBorder, lineWidth: 1))
+                .foregroundStyle(chipTextColor(for: text))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(chipFill, in: RoundedRectangle(cornerRadius: OrbitShape.radiusChip))
+                .overlay(
+                    RoundedRectangle(cornerRadius: OrbitShape.radiusChip)
+                        .stroke(chipBorder, lineWidth: OrbitShape.borderHairlineWidth)
+                )
         }
         .buttonStyle(.plain)
     }
@@ -73,12 +79,23 @@ struct ChatSuggestionChips: View {
                 Text(isExpanded ? "Fewer suggestions" : "More suggestions")
                     .font(.callout)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .background(chipFill, in: Capsule())
-            .overlay(Capsule().stroke(chipBorder, lineWidth: 1))
+            .foregroundStyle(Color.orbitSecondaryText(for: colorScheme))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(chipFill, in: RoundedRectangle(cornerRadius: OrbitShape.radiusChip))
+            .overlay(
+                RoundedRectangle(cornerRadius: OrbitShape.radiusChip)
+                    .stroke(chipBorder, lineWidth: OrbitShape.borderHairlineWidth)
+            )
         }
         .buttonStyle(.plain)
+    }
+
+    private func chipTextColor(for text: String) -> Color {
+        if text.hasPrefix("Research:") {
+            return Color(hex: 0x9B59B6).opacity(0.85)
+        }
+        return .primary
     }
 
     private var chipFill: Color {
@@ -86,6 +103,6 @@ struct ChatSuggestionChips: View {
     }
 
     private var chipBorder: Color {
-        colorScheme == .dark ? .orbitCardBorderDark : .orbitCardBorderLight
+        Color.orbitBorderHairline(for: colorScheme)
     }
 }
