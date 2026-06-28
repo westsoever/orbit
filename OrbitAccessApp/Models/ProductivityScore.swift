@@ -25,15 +25,6 @@ func productivityScore(_ inputs: ScoreInputs) -> Double {
     return (raw * 10).rounded(toPlaces: 1)
 }
 
-struct HourSlot: Identifiable, Sendable {
-    let hour: String
-    let appName: String
-    let eventCount: Int
-
-    var id: String { "\(hour)-\(appName)" }
-    var hourLabel: String { "\(hour):00" }
-}
-
 struct RoutineBlock: Identifiable, Sendable {
     let id: String
     let title: String

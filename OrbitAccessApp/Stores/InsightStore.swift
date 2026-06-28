@@ -7,10 +7,8 @@ final class InsightStore {
     var productivityScore = ProductivityScore(
         inputs: ScoreInputs(taskCompletion: 0, focusDepth: 0, contextRichness: 0, captureConsistency: 0)
     )
-    var schedule: [HourSlot] = []
-    var scheduleSlots: [HourSlot] {
-        schedule
-    }
+    var calendarEvents: [CalendarEvent] = []
+    var isCalendarConnected = false
     var routines: [RoutineBlock] = []
     var recentCaptures: [ContextEvent] = []
     var atomsCapturedToday = 0
@@ -18,6 +16,7 @@ final class InsightStore {
     @ObservationIgnored private var aggregateTimer: AnyCancellable?
     @ObservationIgnored private var dbReader: OrbitDBReader?
     @ObservationIgnored private var lastSeenEventId: Int64 = 0
+    @ObservationIgnored private let calendarProvider: any CalendarScheduleProvider = DisconnectedCalendarProvider()
 
     func configure(dbReader: OrbitDBReader) {
         self.dbReader = dbReader
@@ -34,12 +33,19 @@ final class InsightStore {
     }
 
     func refreshAggregates() {
+        refreshCalendar()
         guard let dbReader, dbReader.isReady else { return }
         if let inputs = try? dbReader.computeScoreInputs() {
             productivityScore = ProductivityScore(inputs: inputs)
         }
-        schedule = (try? dbReader.fetchDailySchedule()) ?? []
         atomsCapturedToday = (try? dbReader.atomsCapturedToday()) ?? 0
+    }
+
+    private func refreshCalendar() {
+        isCalendarConnected = calendarProvider.isConnected
+        Task { @MainActor in
+            calendarEvents = (try? await calendarProvider.todayEvents()) ?? []
+        }
     }
 
     @MainActor

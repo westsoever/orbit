@@ -31,6 +31,7 @@ let package = Package(
                 "App",
                 "IPC",
                 "Models",
+                "Services",
                 "Stores",
                 "AIFunctions",
                 "Extensions",

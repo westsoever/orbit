@@ -12,7 +12,10 @@ struct InsightSidebarView: View {
                 TaskCardList()
 
                 SectionHeader(title: "Today's Schedule")
-                DailyScheduleTimeline(slots: model.insightStore.schedule)
+                CalendarScheduleView(
+                    events: model.insightStore.calendarEvents,
+                    isConnected: model.insightStore.isCalendarConnected
+                )
 
                 SectionHeader(title: "Routines")
                 RoutineList(routines: model.insightStore.routines)
