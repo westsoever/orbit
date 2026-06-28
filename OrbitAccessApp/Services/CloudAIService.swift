@@ -82,8 +82,17 @@ final class CloudAIService: @unchecked Sendable {
             }
     }
 
+    func hasLocalLLM() -> Bool {
+        let url = OrbitPaths.envFileURL
+        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return false }
+        return text.split(separator: "\n").contains { line in
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            return trimmed == "ORBIT_LLM_PROVIDER=local"
+        }
+    }
+
     func shouldShowEnablePrompt(isDaemonOnline: Bool) -> Bool {
-        isDaemonOnline && !isEnabled() && !hasBYOK()
+        isDaemonOnline && !isEnabled() && !hasBYOK() && !hasLocalLLM()
     }
 
     func register() async throws -> CloudAIConfig {

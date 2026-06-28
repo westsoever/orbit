@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct CaptureStatsView: View {
+struct SidebaneCaptureFooter: View {
     @Environment(AppViewModel.self) private var model
     @Environment(\.colorScheme) private var colorScheme
 
@@ -18,9 +18,22 @@ struct CaptureStatsView: View {
                     .font(.caption2)
                     .foregroundStyle(Color.orbitSecondaryText(for: colorScheme))
             }
-            Spacer()
+            Spacer(minLength: 4)
+            Button {
+                openPrivacyPolicy()
+            } label: {
+                Image(systemName: "hand.raised")
+                    .font(.callout)
+            }
+            .buttonStyle(OrbitFlatButtonStyle(variant: .secondary))
+            .help("Privacy Policy")
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
+    }
+
+    private func openPrivacyPolicy() {
+        guard let url = OrbitPaths.privacyPolicyURL() else { return }
+        NSWorkspace.shared.open(url)
     }
 }

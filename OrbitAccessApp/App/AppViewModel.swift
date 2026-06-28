@@ -25,7 +25,7 @@ final class AppViewModel {
 
     /// AI streaming chat via bridge (requires cloud enablement or BYOK)
     var canUseAIChat: Bool {
-        canUseLiveServices && (isCloudAIEnabled || cloudAI.hasBYOK())
+        canUseLiveServices && (isCloudAIEnabled || cloudAI.hasBYOK() || cloudAI.hasLocalLLM())
     }
     var isCloudAIEnabled = false
     var showCloudAISettings = false

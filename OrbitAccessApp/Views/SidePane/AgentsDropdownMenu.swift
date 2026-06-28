@@ -14,7 +14,7 @@ struct AgentsDropdownMenu: View {
     }
 
     var body: some View {
-        SidePaneDropdownTrigger(title: triggerTitle, icon: "person.2", iconColor: .secondary) {
+        SidePaneDropdownTrigger(title: triggerTitle, icon: "person.2") {
             ForEach(agents, id: \.self) { agent in
                 Button {
                     lastSelection = agent.displayName

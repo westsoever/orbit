@@ -18,6 +18,7 @@ Standalone FastAPI service that registers Orbit Access devices and proxies chat 
 | `RELAY_DATABASE_PATH` | no | `relay.db` | SQLite path for devices and usage |
 | `ORBIT_DEFAULT_MODEL` | no | `owl-alpha` | Default model if client omits `model` |
 | `TOKEN_TTL_DAYS` | no | `365` | Device token lifetime |
+| `OPENROUTER_BASE_URL` | no | `https://openrouter.ai/api/v1` | OpenRouter API base URL |
 
 Copy `.env.example` to `.env` and set `OPENROUTER_API_KEY` and `ORBIT_RELAY_SECRET`.
 
@@ -42,6 +43,18 @@ orbit-relay-admin revoke --install-id <uuid>
 Set `ORBIT_RELAY_URL` when building or launching Orbit Access (e.g. `https://ai.yourdomain.com`). Defaults to `http://127.0.0.1:8080` for local development.
 
 ## Install and run locally
+
+### Run locally (quickstart)
+
+One command bootstraps the venv, installs deps, seeds `.env`, and starts the relay on `http://127.0.0.1:8080`:
+
+```bash
+./run-local.sh
+```
+
+The first run creates `.env` from `.env.example` and exits so you can fill in `OPENROUTER_API_KEY` and `ORBIT_RELAY_SECRET`; re-run it once those are set.
+
+### Manual
 
 ```bash
 cd services/orbit-relay

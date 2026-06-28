@@ -73,3 +73,68 @@ def test_format_completion_error_429():
     err = httpx.HTTPStatusError("limit", request=request, response=response)
     message = format_completion_error(err)
     assert "Daily cloud AI limit" in message
+
+
+def test_complete_local_when_provider_local(monkeypatch):
+    monkeypatch.setenv("ORBIT_LLM_PROVIDER", "local")
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    monkeypatch.delenv("ORBIT_LOCAL_LLM_BASE_URL", raising=False)
+    monkeypatch.delenv("ORBIT_LOCAL_LLM_MODEL", raising=False)
+    from orbit.check import llm
+
+    monkeypatch.setattr(llm, "_CONFIG", Path("/nonexistent/.env"))
+
+    captured = {}
+
+    message = MagicMock()
+    message.content = "local-answer"
+    choice = MagicMock()
+    choice.message = message
+    response = MagicMock()
+    response.choices = [choice]
+
+    client = MagicMock()
+    client.chat.completions.create.return_value = response
+
+    def fake_openai_ctor(*, api_key, base_url):
+        captured["api_key"] = api_key
+        captured["base_url"] = base_url
+        return client
+
+    fake_openai = MagicMock()
+    fake_openai.OpenAI.side_effect = fake_openai_ctor
+
+    with patch.dict("sys.modules", {"openai": fake_openai}):
+        assert llm.complete("s", "u") == "local-answer"
+
+    assert captured["api_key"] == "ollama"
+    assert captured["base_url"] == "http://localhost:11434/v1"
+
+
+def test_auto_falls_back_to_byok_when_local_unavailable(monkeypatch):
+    monkeypatch.setenv("ORBIT_LLM_PROVIDER", "auto")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "byok-key")
+    from orbit.check import llm
+
+    monkeypatch.setattr(llm, "_local_available", lambda base_url: False)
+
+    with patch.object(llm, "_complete_local") as mock_local:
+        with patch.object(llm, "_complete_openrouter", return_value="byok-answer") as mock_openrouter:
+            assert llm.complete("s", "u") == "byok-answer"
+            mock_openrouter.assert_called_once_with("s", "u", "byok-key")
+            mock_local.assert_not_called()
+
+
+def test_format_error_relay_disabled_nested_detail():
+    import httpx
+    from orbit.check.llm import format_completion_error
+
+    request = httpx.Request("POST", "http://example.com")
+    response = httpx.Response(
+        503,
+        request=request,
+        json={"detail": {"error": "relay_disabled"}},
+    )
+    err = httpx.HTTPStatusError("disabled", request=request, response=response)
+    message = format_completion_error(err)
+    assert message == "Cloud AI temporarily unavailable."

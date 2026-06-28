@@ -40,7 +40,7 @@ final class ChatStore {
         } else if canSearchLocally, let dbReader {
             await sendOffline(query: query, dbReader: dbReader)
         } else {
-            errorMessage = "Orbit database is not available. Start the daemon for AI chat."
+            errorMessage = "Start Orbit to enable chat — no AI service and no local database are available yet."
         }
     }
 

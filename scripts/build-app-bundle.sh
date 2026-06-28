@@ -89,13 +89,31 @@ fi
 
 [[ -f "$SOURCE_ROOT/pyproject.toml" ]] || error "Source root missing pyproject.toml: $SOURCE_ROOT"
 
+FINAL_OUTPUT="$ORBIT_OUTPUT"
+STAGING=""
+
+status "Building Orbit.app at $FINAL_OUTPUT"
+if [[ "$FINAL_OUTPUT" == /Applications/* ]]; then
+  STAGING="$(mktemp -d)/Orbit.app"
+  ORBIT_OUTPUT="$STAGING"
+  status "Staging build in $STAGING (moves to $FINAL_OUTPUT when complete)…"
+else
+  ORBIT_OUTPUT="$FINAL_OUTPUT"
+fi
+
 RESOURCES="$ORBIT_OUTPUT/Contents/Resources"
 MACOS="$ORBIT_OUTPUT/Contents/MacOS"
 VENV="$RESOURCES/orbit-venv"
 ORBIT_CORE="$RESOURCES/orbit-core"
 CLI_WRAPPER="$RESOURCES/orbit"
 
-status "Building Orbit.app at $ORBIT_OUTPUT"
+cleanup_staging() {
+  if [[ -n "${STAGING:-}" && -d "$STAGING" ]]; then
+    rm -rf "$STAGING"
+  fi
+}
+trap cleanup_staging EXIT
+
 rm -rf "$ORBIT_OUTPUT"
 mkdir -p "$MACOS" "$RESOURCES" "$ORBIT_CORE/docs/gdpr"
 
@@ -103,8 +121,21 @@ status "Creating embedded Python venv…"
 "$ORBIT_PYTHON" -m venv "$VENV"
 # shellcheck disable=SC1091
 source "$VENV/bin/activate"
-pip install -q --upgrade pip
-pip install -q "$SOURCE_ROOT"
+status "Upgrading pip…"
+pip install --upgrade pip
+status "Installing Orbit into venv (PyTorch + sentence-transformers; often 5–15 min, downloads ~1–2 GB)…"
+pip install "$SOURCE_ROOT"
+
+status "Verifying embedded package data…"
+SCHEMA="$VENV/lib/python3.13/site-packages/orbit/storage/schema.sql"
+if [[ ! -f "$SCHEMA" ]]; then
+  echo "ERROR: schema.sql missing from embedded venv ($SCHEMA)." >&2
+  echo "Ensure pyproject.toml [tool.setuptools.package-data] ships storage/schema.sql." >&2
+  exit 1
+fi
+
+status "Smoke-testing DB open…"
+"$VENV/bin/python3.13" -c "import tempfile, os; from orbit.storage.db import open_db_plain; open_db_plain(os.path.join(tempfile.mkdtemp(),'t.db')); print('db ok')"
 
 status "Copying docs into orbit-core…"
 cp -R "$SOURCE_ROOT/docs/gdpr/." "$ORBIT_CORE/docs/gdpr/"
@@ -135,6 +166,12 @@ if [[ "$ORBIT_SKIP_SWIFT" != "1" ]]; then
     cp "$APP_DIR/Resources/Info.bundle.plist" "$ORBIT_OUTPUT/Contents/Info.plist"
     /usr/libexec/PlistBuddy -c "Set :CFBundleExecutable Orbit" "$ORBIT_OUTPUT/Contents/Info.plist"
     /usr/libexec/PlistBuddy -c "Set :CFBundleName Orbit" "$ORBIT_OUTPUT/Contents/Info.plist"
+    if [[ -n "${ORBIT_RELAY_URL:-}" ]]; then
+      status "Injecting ORBIT_RELAY_URL into LSEnvironment ($ORBIT_RELAY_URL)…"
+      /usr/libexec/PlistBuddy -c "Add :LSEnvironment dict" "$ORBIT_OUTPUT/Contents/Info.plist" 2>/dev/null || true
+      /usr/libexec/PlistBuddy -c "Add :LSEnvironment:ORBIT_RELAY_URL string $ORBIT_RELAY_URL" "$ORBIT_OUTPUT/Contents/Info.plist" 2>/dev/null \
+        || /usr/libexec/PlistBuddy -c "Set :LSEnvironment:ORBIT_RELAY_URL $ORBIT_RELAY_URL" "$ORBIT_OUTPUT/Contents/Info.plist"
+    fi
   else
     error "Missing Info.bundle.plist"
   fi
@@ -154,8 +191,16 @@ fi
 status "Running orbit doctor…"
 "$CLI_WRAPPER" doctor
 
-status "Done: $ORBIT_OUTPUT"
-if [[ -n "$SWIFT_BIN" ]]; then
-  status "Launch with: open \"$ORBIT_OUTPUT\""
+if [[ -n "$STAGING" ]]; then
+  status "Installing to $FINAL_OUTPUT…"
+  rm -rf "$FINAL_OUTPUT"
+  mv "$STAGING" "$FINAL_OUTPUT"
+  trap - EXIT
+  STAGING=""
 fi
-status "CLI: \"$CLI_WRAPPER\""
+
+status "Done: $FINAL_OUTPUT"
+if [[ -n "$SWIFT_BIN" ]]; then
+  status "Launch with: open \"$FINAL_OUTPUT\""
+fi
+status "CLI: \"$FINAL_OUTPUT/Contents/Resources/orbit\""
