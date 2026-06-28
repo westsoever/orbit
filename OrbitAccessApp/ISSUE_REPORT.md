@@ -9,7 +9,7 @@
 - [x] **`ORBIT_ROOT`:** exported by run script for `OrbitPaths` (privacy policy, docs resolution)
 - [x] **Disk pressure (partial):** removed Xcode DerivedData, workspace `xcuserdata`, stray `*.db` in repo root; `.gitignore` covers `.build/`, `.swiftpm/`, old in-tree `.app`
 - [x] **Task Approve → dispatch:** `POST /api/task/{id}/approve` now calls `orbit.check.dispatch.dispatch()` and sets status `dispatched`
-- [x] **Bootstrap UX:** status banners in main window + `retryDatabaseBootstrap()` when DB selection fails
+- [x] **Bootstrap UX:** bottom-left issue notifications for serious bootstrap failures + `retryDatabaseBootstrap()` when DB selection fails
 - [x] **Search panel:** Sidebane search triggers activate panel; hybrid falls back to lexical FTS5
 - [x] **Routines:** loaded from `~/.orbit/routines.json` with sensible defaults
 - [x] **Privacy policy:** resolved via `ORBIT_ROOT` / repo-relative `OrbitPaths`

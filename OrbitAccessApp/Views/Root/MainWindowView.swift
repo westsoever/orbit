@@ -7,7 +7,7 @@ struct MainWindowView: View {
     @AppStorage("chatIsFloating") private var chatIsFloating = false
 
     var body: some View {
-        ZStack(alignment: .top) {
+        ZStack {
             ThreePaneLayout(panes: [
             PaneDescriptor(id: "sidebane", position: .leading, preferredWidth: 220, isCollapsible: true) {
                 SidebaneView()
@@ -49,37 +49,14 @@ struct MainWindowView: View {
             }
         }
 
-            VStack(spacing: 6) {
-                if let error = model.bootstrapError {
-                    statusBanner(error, actionTitle: "Select orbit.db") {
-                        Task { await model.retryDatabaseBootstrap() }
-                    }
-                } else if !model.isDatabaseReady {
-                    statusBanner("Select orbit.db to load context history.", actionTitle: "Select") {
-                        Task { await model.retryDatabaseBootstrap() }
-                    }
-                } else if !model.isDaemonOnline {
-                    statusBanner("Daemon offline — run `orbit start` for live search, chat, and tasks.")
+            if let issue = model.seriousIssue {
+                OrbitIssueNotificationHost(issue: issue) {
+                    Task { await model.retryDatabaseBootstrap() }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                .padding(.leading, 16)
+                .padding(.bottom, 16)
             }
-            .padding(.top, 8)
         }
-    }
-
-    private func statusBanner(_ message: String, actionTitle: String? = nil, action: (() -> Void)? = nil) -> some View {
-        HStack(spacing: 8) {
-            Text(message)
-                .font(.caption)
-                .foregroundStyle(.primary)
-            if let actionTitle, let action {
-                Button(actionTitle, action: action)
-                    .controlSize(.small)
-            }
-            Spacer()
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
-        .padding(.horizontal, 12)
     }
 }

@@ -12,7 +12,13 @@ final class AppViewModel {
     var isDaemonOnline = false
     var isCaptureActive = false
     var isDatabaseReady = false
-    var bootstrapError: String?
+    var bootstrapFailure: OrbitDBError?
+
+    var seriousIssue: OrbitIssue? {
+        guard let failure = bootstrapFailure else { return nil }
+        if case .openPanelCancelled = failure { return nil }
+        return .databaseBootstrapFailed(message: failure.localizedDescription)
+    }
 
     let bridge = OrbitBridgeClient()
     let dbReader = OrbitDBReader()
@@ -31,12 +37,15 @@ final class AppViewModel {
     func start() async {
         do {
             try await dbReader.bootstrap()
+            bootstrapFailure = nil
             isDatabaseReady = true
             insightStore.refreshAggregates()
             insightStore.refreshRecentCaptures(incremental: false)
             startWALWatcher()
+        } catch let error as OrbitDBError {
+            bootstrapFailure = error
         } catch {
-            bootstrapError = error.localizedDescription
+            bootstrapFailure = .databaseUnavailable
         }
         startStatusPolling()
         taskStore.startPolling(bridge)
@@ -45,15 +54,19 @@ final class AppViewModel {
 
     @MainActor
     func retryDatabaseBootstrap() async {
-        bootstrapError = nil
+        bootstrapFailure = nil
         do {
             try await dbReader.bootstrap()
+            bootstrapFailure = nil
             isDatabaseReady = true
             insightStore.refreshAggregates()
             insightStore.refreshRecentCaptures(incremental: false)
             startWALWatcher()
+        } catch let error as OrbitDBError {
+            bootstrapFailure = error
+            isDatabaseReady = false
         } catch {
-            bootstrapError = error.localizedDescription
+            bootstrapFailure = .databaseUnavailable
             isDatabaseReady = false
         }
     }
