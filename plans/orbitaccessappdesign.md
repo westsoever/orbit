@@ -177,12 +177,10 @@ Fixed **220 pt** when expanded; collapses to **0** (content clipped, divider sna
 ```
 SidebaneView
 ├─ SidePaneSectionHeader("SEARCH")
-│  ├─ SidePaneSearchTrigger("Semantic Search", "magnifyingglass")
-│  ├─ SidePaneSearchTrigger("Find by App",     "app.badge")
-│  └─ SidePaneSearchTrigger("Find by Time",    "clock")
+│  ├─ SidebaneSearchPanel()          // conditional
+│  └─ SearchDropdownMenu()
 ├─ SidePaneSectionHeader("AGENTS")
-│  ├─ AgentShortcutRow(.writing)   ├─ AgentShortcutRow(.research)
-│  ├─ AgentShortcutRow(.code)      └─ AgentShortcutRow(.admin)
+│  └─ AgentsDropdownMenu()
 ├─ SidePaneSectionHeader("CAPTURE")
 │  ├─ DaemonStatusIndicator()        // live green/red dot, polls /api/status
 │  └─ CaptureStatsView()             // atoms captured today (Track A COUNT)
@@ -591,8 +589,10 @@ OrbitAccessApp/
 ├─ Views/
 │  ├─ Root/        ThreePaneLayout.swift  MainWindowView.swift
 │  ├─ SidePane/    SidebaneView.swift  SidePaneSectionHeader.swift
-│  │               SidePaneSearchTrigger.swift  AgentShortcutRow.swift
-│  │               DaemonStatusIndicator.swift  CaptureStatsView.swift
+│  │               SidePaneDropdownTrigger.swift  SearchDropdownMenu.swift
+│  │               AgentsDropdownMenu.swift  SidePaneSearchTrigger.swift
+│  │               AgentShortcutRow.swift  DaemonStatusIndicator.swift
+│  │               CaptureStatsView.swift
 │  ├─ Chat/        MainChatView.swift  FloatingChatView.swift  ChatMessageList.swift
 │  │               ChatBubbleView.swift  ChatInputBar.swift  ContextSourceChip.swift
 │  │               ContextAtomDetailSheet.swift  FloatingChatPlaceholderView.swift

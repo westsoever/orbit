@@ -10,21 +10,10 @@ struct SidebaneView: View {
                 if model.searchStore.panelActive {
                     SidebaneSearchPanel()
                 }
-                SidePaneSearchTrigger(title: "Semantic Search", icon: "magnifyingglass") {
-                    Task { await SemanticSearchFunction().execute(model.aiContext()) }
-                }
-                SidePaneSearchTrigger(title: "Find by App", icon: "app.badge") {
-                    Task { await FindByAppFunction().execute(model.aiContext()) }
-                }
-                SidePaneSearchTrigger(title: "Find by Time", icon: "clock") {
-                    model.searchStore.activateFindByTime()
-                }
+                SearchDropdownMenu()
 
                 SidePaneSectionHeader(title: "AGENTS")
-                AgentShortcutRow(agentType: .writing)
-                AgentShortcutRow(agentType: .research)
-                AgentShortcutRow(agentType: .code)
-                AgentShortcutRow(agentType: .admin)
+                AgentsDropdownMenu()
 
                 SidePaneSectionHeader(title: "CAPTURE")
                 DaemonStatusIndicator()
