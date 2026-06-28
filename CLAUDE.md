@@ -23,9 +23,9 @@ bash scripts/grep_antipatterns.sh
 python scripts/probe_app.py --bundle com.apple.Terminal
 ```
 
-Use Homebrew Python 3.13 for sqlite-vec embeddings. Capture-only: `orbit start --no-embed`.
+Use Homebrew Python 3.13 for sqlite-vec embeddings. Capture-only: `orbit start --no-embed`. Background daemon: `orbit start --detach`; stop with `orbit stop` or Orbit Access App sidebar.
 
-Permissions: `orbit/capture/PERMISSIONS.md`. GDPR CLI: `orbit privacy --help`.
+Orbit Access App: `bash scripts/run_orbit_access_app.sh` (auto-starts daemon if bridge is down). Design: `plans/orbitaccessappdesign.md`.
 
 ## Immediate Build Target
 

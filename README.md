@@ -62,7 +62,8 @@ FSEvents (opt-in) ──► fs_worker ──► fs_events
 | `orbit/capture/listener.py` | App-focus events (1.5s debounce per bundle) |
 | `orbit/capture/worker.py` | AX capture, metadata/OCR fallbacks |
 | `orbit/capture/profiles.py` | Adaptive depth: 12 native / 20 Chromium / 24 Electron |
-| `orbit/browser_bridge/` | Localhost HTTP ingest for browser companion |
+| `orbit/browser_bridge/` | Localhost HTTP ingest + Orbit Access API (`:8765`) |
+| `orbit/daemon_pid.py`, `orbit/daemon_ctl.py` | PID file + detached start / graceful stop |
 | `orbit/capture/fsevents_listener.py` | Tier 3 workspace path events |
 | `orbit/privacy/` | Export, delete, purge (GDPR Art. 15/17) |
 | `orbit/check/` | Task detection + dispatch |
@@ -80,11 +81,30 @@ FSEvents (opt-in) ──► fs_worker ──► fs_events
 | `capture_audit` | Accountability log: method, tier, atom count |
 | `task_log` | Task detection / dispatch audit |
 
-Database default: `~/.orbit/orbit.db`
+Database default: `~/.orbit/orbit.db`  
+Daemon PID file (when running): `~/.orbit/daemon.pid`  
+Daemon log (detached mode): `~/.orbit/daemon.log`
 
 ---
 
-## Install
+## Orbit Access App
+
+Native SwiftUI macOS frontend (`OrbitAccessApp/`) for browsing captured context, hybrid search, chat, and task approval. It reads SQLite directly for history and talks to the Python daemon over the local HTTP bridge.
+
+```bash
+bash scripts/run_orbit_access_app.sh   # build + launch; auto-starts daemon if down
+```
+
+**Daemon controls in the UI**
+
+| Location | Control |
+|----------|---------|
+| Sidebar → **CAPTURE** → `DaemonStatusIndicator` | **Start** / **Stop**, green/red status dot, **Capturing** pulse when active |
+| Menu bar popover | **Start daemon** / **Stop daemon** |
+
+The app polls `GET /api/status` every 5 seconds. When offline, chat send and hybrid search are disabled; local FTS5 history still works.
+
+Design reference: `plans/orbitaccessappdesign.md`
 
 Requires **macOS 14+**, **Python 3.10+**, and **Accessibility** permission for Terminal/Python.
 
@@ -112,11 +132,15 @@ Activate the venv first: `source .venv/bin/activate`
 ### Capture daemon
 
 ```bash
-# Recommended: capture + FTS, minimal CPU/RAM
+# Foreground (terminal attached; Ctrl-C to stop)
 orbit start --no-embed
 
+# Background (recommended for Orbit Access App and daily use)
+orbit start --detach --no-embed
+orbit stop
+
 # Full stack: capture + embeddings + browser bridge
-orbit start
+orbit start --detach
 
 # Options
 orbit start --no-embed --no-browser-bridge --no-fsevents
@@ -124,6 +148,23 @@ orbit start --max-depth 16          # override AX depth
 orbit start --purge-retention       # delete events older than policy retention_days
 orbit start --ocr                   # session-only OCR enable (also set in policy)
 ```
+
+**Lifecycle**
+
+| Command | Behavior |
+|---------|----------|
+| `orbit start` | Runs in the foreground; blocks the terminal until Ctrl-C or menu bar **Quit Orbit** |
+| `orbit start --detach` | Spawns a background process; logs to `~/.orbit/daemon.log`; writes `~/.orbit/daemon.pid` |
+| `orbit stop` | Graceful shutdown via `POST /api/shutdown`, then SIGTERM if needed; removes PID file |
+
+Verify the bridge is up:
+
+```bash
+curl -s http://127.0.0.1:8765/health        # {"ok": true}
+curl -s http://127.0.0.1:8765/api/status    # {"ok": true, "capture_active": false}
+```
+
+Bridge routes used by Orbit Access App: `/api/status`, `/api/search`, `/api/chat`, `/api/tasks/pending`, `/api/task/{id}/approve`, `/api/task/{id}/skip`, `/api/shutdown`.
 
 ### Privacy & opt-in tiers
 
@@ -161,6 +202,7 @@ python scripts/probe_app.py --bundle com.apple.Terminal
 python scripts/probe_app.py --all-visible
 python scripts/test_fsevents.py
 python scripts/test_browser_bridge.py   # requires running daemon
+python scripts/test_bridge_api.py       # in-process bridge tests (+ shutdown route)
 ```
 
 Compatibility matrix: `docs/capture-compatibility.md`
@@ -171,7 +213,7 @@ Compatibility matrix: `docs/capture-compatibility.md`
 
 For Chromium browsers where AX returns empty trees (Dia, Chrome, Arc):
 
-1. `orbit start` (bridge on `http://127.0.0.1:8765`)
+1. `orbit start --detach` (bridge on `http://127.0.0.1:8765`)
 2. Load unpacked extension from `orbit/browser-extension/` — see that README
 3. Or enable renderer accessibility: `chrome://accessibility/`
 
@@ -181,7 +223,7 @@ For Chromium browsers where AX returns empty trees (Dia, Chrome, Arc):
 
 Orbit is event-driven (no polling loops). For minimal overhead:
 
-- Use `orbit start --no-embed --no-browser-bridge --no-fsevents`
+- Use `orbit start --detach --no-embed --no-browser-bridge --no-fsevents`
 - Keep `tier_ocr` and `tier_fsevents` off in `~/.orbit/policy.json`
 - AX walks are capped at 5000 nodes; atoms capped at 300 per event
 - Focus debounce: 1.5s per bundle; FSEvents latency: 1s
@@ -195,6 +237,9 @@ Embeddings load MiniLM (~90MB) on first capture batch when enabled.
 | Symptom | Fix |
 |---------|-----|
 | `enable_load_extension` / SQLite extensions warning | Run `orbit doctor`. Orbit auto-restarts via `.venv/bin/orbit` when the project venv exists. Otherwise: `source .venv/bin/activate && pip install -e .` |
+| Daemon won't start in background | Check `~/.orbit/daemon.log`. Ensure Accessibility permission granted; try `orbit start --detach --no-embed` from activated venv |
+| Orbit Access shows "Daemon offline" | Tap **Start** in sidebar CAPTURE section, or run `orbit start --detach --no-embed` |
+| `orbit stop` says not running but port busy | Stale process: `lsof -i :8765`, then `kill <pid>` and `rm -f ~/.orbit/daemon.pid` |
 | Cursor/Electron: 0 atoms | Fixed by adaptive depth 24; probe with `scripts/probe_app.py` |
 | Browser: empty_tree | Enable `chrome://accessibility` or install browser extension |
 | OCR returns nothing | Grant Screen Recording; run `orbit privacy enable-ocr` |
@@ -246,6 +291,8 @@ Internet is off during capture; used only when `orbit check` dispatches an appro
 | `orbit-context.md` | Product brief and architecture decisions |
 | `innitial.md` | Full roadmap and feasibility matrix |
 | `plans/03-universal-capture.md` | Universal capture implementation plan |
+| `plans/orbitaccessappdesign.md` | Orbit Access App (SwiftUI) design + bridge API |
+| `OrbitAccessApp/ISSUE_REPORT.md` | Access app build/run notes |
 | `docs/capture-compatibility.md` | App-by-app capture matrix |
 | `docs/architecture-context-routing.md` | Context routing diagram (capture vs check) |
 | `docs/diagrams/context-routing.mmd` | Mermaid source for architecture diagram |
@@ -258,7 +305,7 @@ Internet is off during capture; used only when `orbit check` dispatches an appro
 
 | Phase | Status | Scope |
 |-------|--------|-------|
-| 1 — Context Foundation | **Done** | Capture daemon, SQLite store, hybrid search, universal AX |
+| 1 — Context Foundation | **Done** | Capture daemon, SQLite store, hybrid search, universal AX, Orbit Access App |
 | 2 — Kanban MVP | Planned | Orchestrator + retrieval, Kanban UI |
 | 3 — Agent Execution | Planned | MCP integration, approval gates, audit log |
 | 4 — Full Agent Fleet | Future | Code Agent (Docker), local LLM mode |

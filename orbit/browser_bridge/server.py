@@ -117,6 +117,9 @@ class _BridgeHandler(BaseHTTPRequestHandler):
         if path == "/api/chat":
             self._handle_chat()
             return
+        if path == "/api/shutdown":
+            self._handle_shutdown()
+            return
         match = _TASK_APPROVE_RE.match(path)
         if match:
             self._handle_task_approve(int(match.group(1)))
@@ -158,6 +161,15 @@ class _BridgeHandler(BaseHTTPRequestHandler):
     def _handle_status(self) -> None:
         ref: CaptureActiveRef | None = getattr(self.server, "capture_active_ref", None)
         _send_json(self, 200, {"ok": True, "capture_active": _capture_active(ref)})
+
+    def _handle_shutdown(self) -> None:
+        shutdown_hook = getattr(self.server, "shutdown_hook", None)
+        if shutdown_hook is None:
+            self.send_error(503, "shutdown unavailable")
+            return
+        self.send_response(204)
+        self.end_headers()
+        shutdown_hook()
 
     def _handle_tasks_pending(self) -> None:
         db_ref = _require_db(self, self.server)
@@ -288,6 +300,7 @@ def start_browser_bridge(
     port: int = DEFAULT_PORT,
     db_ref: DbRef | None = None,
     capture_active_ref: CaptureActiveRef | None = None,
+    shutdown_hook: Callable[[], None] | None = None,
 ) -> tuple[ThreadingHTTPServer, threading.Thread]:
     """Start localhost HTTP server; returns (server, thread)."""
     if db_ref is not None:
@@ -296,6 +309,7 @@ def start_browser_bridge(
     server.event_queue = event_queue  # type: ignore[attr-defined]
     server.db_ref = db_ref  # type: ignore[attr-defined]
     server.capture_active_ref = capture_active_ref  # type: ignore[attr-defined]
+    server.shutdown_hook = shutdown_hook  # type: ignore[attr-defined]
     thread = threading.Thread(
         target=server.serve_forever,
         name="browser-bridge",

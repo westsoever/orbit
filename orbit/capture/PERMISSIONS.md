@@ -10,8 +10,11 @@ After granting permission, restart the terminal session and re-run:
 
 ```bash
 source .venv/bin/activate
-orbit start
+orbit start --detach --no-embed   # background; Orbit Access App can also start/stop the daemon
+orbit stop                        # when finished
 ```
+
+Foreground mode (terminal attached): `orbit start` — stop with Ctrl-C or menu bar **Quit Orbit**.
 
 ## Python / SQLite (separate from Accessibility)
 
@@ -51,7 +54,7 @@ python scripts/probe_app.py --bundle company.thebrowser.dia
 
 Captures **URL + page title + selection** via a local browser extension (no cloud).
 
-1. Start daemon: `orbit start` (bridge on `http://127.0.0.1:8765`)
+1. Start daemon: `orbit start --detach` (bridge on `http://127.0.0.1:8765`)
 2. Load unpacked extension from `orbit/browser-extension/` — see that folder’s README
 3. Switch tabs; check capture:
 
@@ -97,7 +100,7 @@ Captures **file paths and mtimes only** — never file contents.
    orbit privacy enable-fsevents
    ```
 2. Edit `~/.orbit/policy.json` to set `watch_roots` (default: `["~/Projects"]`). Paths must exist.
-3. Start daemon: `orbit start` (disable with `--no-fsevents`)
+3. Start daemon: `orbit start --detach` (disable with `--no-fsevents`)
 
 File events are stored in `fs_events` and linked to the nearest app-focus event within ±30 seconds.
 

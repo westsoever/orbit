@@ -47,3 +47,15 @@ chmod +x "$BUNDLE/Contents/MacOS/OrbitAccessApp"
 
 echo "Launching $BUNDLE"
 open "$BUNDLE"
+
+ORBIT_BIN="${ORBIT_ROOT}/.venv/bin/orbit"
+if [[ -x "$ORBIT_BIN" ]]; then
+  if ! curl -sf http://127.0.0.1:8765/health >/dev/null 2>&1; then
+    echo "Starting Orbit daemon…"
+    "$ORBIT_BIN" start --detach --no-embed || true
+    for _ in $(seq 1 40); do
+      curl -sf http://127.0.0.1:8765/health >/dev/null 2>&1 && break
+      sleep 0.25
+    done
+  fi
+fi

@@ -120,6 +120,7 @@ Anything needing `sqlite-vec` or a write. Additive routes on the existing
 | `GET /api/tasks/pending` | Today's detected tasks | `get_pending_today()` |
 | `POST /api/task/{id}/approve` | Approve + dispatch | `update_status(…, "approved", approved_prompt)` |
 | `POST /api/task/{id}/skip` | Skip a task | `update_status(…, "skipped")` |
+| `POST /api/shutdown` | Graceful daemon stop (localhost) | `AppHelper.stopEventLoop` via bridge hook |
 | `GET /api/search?q=&limit=` | Hybrid (vec+FTS) search | `search_hybrid(con, q, limit)` |
 | `POST /api/chat` | NL query → search + LLM, **SSE stream** | `search_hybrid` + `orbit.check.llm` |
 
@@ -143,10 +144,12 @@ actor OrbitBridgeClient: OrbitBridgeProtocol {
 ### Offline fallback
 
 `checkStatus()` failure (connection refused / 503) → app enters **read-only mode**:
-- A "Daemon offline" badge renders in the Sidebane (`DaemonStatusIndicator` red).
-- Approve/Skip buttons disable; the chat input shows "Start `orbit start` to enable search & chat".
+- A "Daemon offline" badge renders in the Sidebane (`DaemonStatusIndicator` red) with a **Start** button.
+- When online: green dot + "Daemon running"; pulsing dot + "Capturing" when `capture_active` is true; **Stop** button available.
+- Approve/Skip buttons disable; the chat input shows "Start the daemon from the sidebar to enable search & chat".
 - Historical browsing (timeline, recent captures, lexical search) keeps working via Track A.
 - A 5s status poll auto-restores full mode when the daemon returns.
+- `DaemonManager` shells out to `orbit start --detach --no-embed` / `orbit stop` (or `POST /api/shutdown` when bridge is up).
 
 ---
 
@@ -162,6 +165,7 @@ actor OrbitBridgeClient: OrbitBridgeProtocol {
 | `SearchStore` | Store | Search results, mode (lexical/hybrid) | query | `hits` |
 | `InsightStore` | Store | Score, schedule, routines, recent captures | db reader | score, timeline, routines |
 | `AppViewModel` | Root | Owns the four stores, daemon-mode flag, DI | — | environment object |
+| `DaemonManager` | Service | Start/stop detached daemon via CLI or HTTP shutdown | `orbit` binary path | running/offline state |
 | `ThreePaneLayout` | View | Lay out ordered panes; own collapse widths | `[PaneDescriptor]` | the spine |
 | `StatusBarController` | AppKit | Menu-bar dot + popover lifecycle | score, task count | clicks → open main window |
 | `AIFunctionRegistry` | Ext | Hold registered Sidebane functions | `register(_:)` | functions grouped by section |
@@ -212,7 +216,7 @@ Button { sidebaneVisible.toggle() } label: { Image(systemName: "sidebar.left") }
   via `@FocusState`). It does **not** dispatch an agent directly — the chat card
   remains the single point of NL interaction.
 - `DaemonStatusIndicator` — `@MainActor` 5 s poll; green `Circle` + "Daemon running",
-  red + "Daemon offline".
+  red + "Daemon offline"; **Start** / **Stop** buttons; pulse when capturing.
 
 ### 4.2 Center — Main Chat Card
 

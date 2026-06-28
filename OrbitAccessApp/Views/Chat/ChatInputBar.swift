@@ -85,7 +85,7 @@ struct ChatInputBar: View {
     private var placeholderText: String {
         model.isDaemonOnline
             ? "Ask Orbit anything…"
-            : "Start `orbit start` to enable search & chat"
+            : "Start the daemon from the sidebar to enable search & chat"
     }
 
     private var sendButton: some View {

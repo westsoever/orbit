@@ -36,6 +36,22 @@ struct StatusBarPopoverView: View {
             .buttonStyle(.borderedProminent)
             .tint(Color.orbitAccent)
             .frame(maxWidth: .infinity)
+
+            HStack(spacing: 8) {
+                if model.isDaemonOnline {
+                    Button("Stop daemon") {
+                        Task { await model.stopDaemon() }
+                    }
+                    .buttonStyle(.bordered)
+                } else {
+                    Button("Start daemon") {
+                        Task { await model.startDaemon() }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Color.orbitAccent)
+                }
+            }
+            .frame(maxWidth: .infinity)
         }
         .padding(16)
         .frame(width: 280)

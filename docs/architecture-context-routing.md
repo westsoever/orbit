@@ -8,7 +8,7 @@ Visual reference for mentor review. Interactive version: open `orbit-context-rou
 
 | Pipeline | Command | Input | Output |
 |----------|---------|-------|--------|
-| Perception | `orbit start` | App focus → Accessibility API | `~/.orbit/orbit.db` (events + atoms) |
+| Perception | `orbit start` / `orbit start --detach` | App focus → Accessibility API | `~/.orbit/orbit.db` (events + atoms) |
 | Cognition | `orbit check` | GitHub daily report or local `.md` | `task_log` + `mvp-output/*.md` |
 
 `orbit check` does **not** read captured atoms yet. Phase 2 wires hybrid search into the orchestrator.
@@ -51,6 +51,10 @@ flowchart TB
 | 4 | OCR | Opt-in | Vision text, no images |
 
 Policy: `~/.orbit/policy.json`
+
+## Orbit Access App
+
+Native SwiftUI client (`OrbitAccessApp/`). Reads SQLite for history; hybrid search, chat, and task writes go through the daemon bridge on `127.0.0.1:8765`. Sidebar **CAPTURE** section shows daemon status and **Start** / **Stop** controls (`DaemonManager` → `orbit start --detach` / `orbit stop`). Launch: `bash scripts/run_orbit_access_app.sh`.
 
 ## Design constraints
 

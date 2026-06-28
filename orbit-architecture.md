@@ -62,8 +62,9 @@ Search layer              [search/]
 | `orbit/embed/` | `worker.py` | Async embedding pipeline |
 | `orbit/search/` | `hybrid.py`, `lexical.py`, `semantic.py`, `links.py`, `types.py` | Retrieval layer |
 | `orbit/ui/` | `statusbar.py` | macOS status bar (active / idle indicator) |
-| `orbit/cli.py` | — | `orbit start` CLI entrypoint |
-| `orbit_dashboard/` | — | Separate web/Electron dashboard (future MVP) |
+| `orbit/cli.py` | — | `orbit start`, `orbit start --detach`, `orbit stop` |
+| `orbit/daemon_pid.py`, `orbit/daemon_ctl.py` | — | PID file + detached lifecycle |
+| `OrbitAccessApp/` | SwiftUI macOS app | Context browser, chat, task approval; sidebar daemon controls |
 | `scripts/` | `sanity_*.py`, `verify.sh` | Component sanity checks |
 | `plans/` | `01-acceptance.md`, `01-content-collection.md` | Spec / planning docs |
 

@@ -4,7 +4,7 @@ Sends **active tab URL and title** (plus selected text when permitted) to the lo
 
 ## Prerequisites
 
-1. Orbit daemon running: `orbit start` (starts browser bridge on port **8765** by default)
+1. Orbit daemon running: `orbit start --detach` (starts browser bridge on port **8765** by default). Stop with `orbit stop` or the **Stop** button in Orbit Access App.
 2. Chromium-based browser (Chrome, Dia, Arc, Brave, Edge)
 
 ## Install (unpacked)

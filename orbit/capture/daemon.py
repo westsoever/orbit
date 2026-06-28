@@ -112,6 +112,11 @@ def main() -> None:
 
     listener = AppFocusListener(q=focus_queue)
 
+    def _request_shutdown() -> None:
+        from PyObjCTools import AppHelper
+
+        AppHelper.callAfter(AppHelper.stopEventLoop)
+
     browser_queue: queue.Queue | None = None
     browser_server = None
     if not args.no_browser_bridge:
@@ -124,6 +129,7 @@ def main() -> None:
             port=args.browser_bridge_port,
             db_ref=(con, lock),
             capture_active_ref=capture_active,
+            shutdown_hook=_request_shutdown,
         )
         browser_thread = threading.Thread(
             target=run_browser_worker,
@@ -174,11 +180,15 @@ def main() -> None:
         )
         embed_thread.start()
 
+    from orbit.daemon_pid import write_pid
+
+    write_pid()
     logger.info("Orbit daemon running. Switch app focus to capture context. Ctrl-C to stop.")
     try:
         AppHelper.runConsoleEventLoop(installInterrupt=True)
     finally:
         logger.info("Shutting down...")
+        listener.stop()
         focus_queue.put(None)
         if browser_queue is not None:
             browser_queue.put(None)
@@ -192,6 +202,9 @@ def main() -> None:
             stop_browser_bridge(browser_server)
         if embed_queue is not None:
             embed_queue.put(None)
+        from orbit.daemon_pid import remove_pid
+
+        remove_pid()
 
 
 if __name__ == "__main__":

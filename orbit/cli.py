@@ -3,6 +3,8 @@
 Commands:
 
 - ``orbit start`` — run the capture daemon (default DB: ``~/.orbit/orbit.db``)
+- ``orbit start --detach`` — run daemon in background (PID file + log)
+- ``orbit stop`` — stop a detached daemon
 - ``orbit check`` — detect tasks from context and optionally dispatch one
 
 On macOS, embeddings require a venv built with Homebrew Python (see README).
@@ -57,6 +59,24 @@ def main() -> None:
         "--no-fsevents",
         action="store_true",
         help="Disable FSEvents workspace capture (even if tier_fsevents in policy)",
+    )
+    start_p.add_argument(
+        "--detach",
+        action="store_true",
+        help="Start daemon in background (logs to ~/.orbit/daemon.log)",
+    )
+
+    stop_p = sub.add_parser("stop", help="Stop a detached capture daemon")
+    stop_p.add_argument(
+        "--pid-file",
+        default="~/.orbit/daemon.pid",
+        help="PID file path (default: ~/.orbit/daemon.pid)",
+    )
+    stop_p.add_argument(
+        "--timeout",
+        type=float,
+        default=10.0,
+        help="Seconds to wait for graceful shutdown (default: 10)",
     )
 
     privacy_p = sub.add_parser("privacy", help="Export, delete, or configure capture privacy")
@@ -147,8 +167,42 @@ def main() -> None:
         if getattr(args, "no_fsevents", False):
             sys.argv.append("--no-fsevents")
 
+        daemon_argv = sys.argv[1:]  # orbit-daemon flags without script name
+
+        if args.detach:
+            from orbit.daemon_ctl import build_daemon_argv, spawn_detached
+
+            port = args.browser_bridge_port
+            health_url = f"http://127.0.0.1:{port}/health"
+            try:
+                pid = spawn_detached(
+                    build_daemon_argv(daemon_argv),
+                    health_url=health_url,
+                )
+            except RuntimeError as exc:
+                print(str(exc), file=sys.stderr)
+                sys.exit(1)
+            print(f"Orbit daemon started (pid {pid})")
+            sys.exit(0)
+
         from orbit.capture.daemon import main as daemon_main
         daemon_main()
+
+    elif args.command == "stop":
+        import os
+
+        from orbit.daemon_ctl import _health_ok, stop_daemon
+        from orbit.daemon_pid import read_pid
+
+        pid_file = os.path.expanduser(args.pid_file)
+        if read_pid(pid_file) is None and not _health_ok():
+            print("Orbit daemon is not running")
+            sys.exit(0)
+        if stop_daemon(pid_file=pid_file, timeout_s=args.timeout):
+            print("Orbit daemon stopped")
+            sys.exit(0)
+        print("Orbit daemon did not stop in time", file=sys.stderr)
+        sys.exit(1)
 
     elif args.command == "privacy":
         if not args.privacy_action:

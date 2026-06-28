@@ -29,6 +29,17 @@ final class OrbitBridgeClient: OrbitBridgeProtocol, @unchecked Sendable {
         }
     }
 
+    func requestShutdown() async throws {
+        var request = URLRequest(url: base.appendingPathComponent("/api/shutdown"))
+        request.httpMethod = "POST"
+        let (_, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, http.statusCode == 204 else {
+            throw OrbitBridgeError.httpStatus((response as? HTTPURLResponse)?.statusCode ?? 0)
+        }
+        isDaemonAlive = false
+        captureActive = false
+    }
+
     func fetchPendingTasks() async -> [TaskLogEntry] {
         guard await checkStatus() else { return [] }
         do {

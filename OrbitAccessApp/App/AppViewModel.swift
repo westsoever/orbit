@@ -13,6 +13,7 @@ final class AppViewModel {
     var isCaptureActive = false
     var isDatabaseReady = false
     var bootstrapFailure: OrbitDBError?
+    var daemonControlState: DaemonControlState = .offline
 
     var seriousIssue: OrbitIssue? {
         guard let failure = bootstrapFailure else { return nil }
@@ -22,11 +23,13 @@ final class AppViewModel {
 
     let bridge = OrbitBridgeClient()
     let dbReader = OrbitDBReader()
+    private let daemonManager: DaemonManager
 
     @ObservationIgnored private let walWatcher = WALWatcher()
     @ObservationIgnored private var statusTimer: AnyCancellable?
 
     init() {
+        daemonManager = DaemonManager(bridge: bridge)
         chatStore.configure(bridge: bridge)
         taskStore.configure(bridge: bridge)
         searchStore.configure(bridge: bridge, dbReader: dbReader)
@@ -72,8 +75,25 @@ final class AppViewModel {
     }
 
     @MainActor
-    func startDaemonPolling() async {
-        await pollDaemonStatus()
+    func startDaemon() async {
+        do {
+            try await daemonManager.start()
+            daemonControlState = daemonManager.controlState
+            await pollDaemonStatus()
+        } catch {
+            daemonControlState = daemonManager.controlState
+        }
+    }
+
+    @MainActor
+    func stopDaemon() async {
+        do {
+            try await daemonManager.stop()
+            daemonControlState = daemonManager.controlState
+            await pollDaemonStatus()
+        } catch {
+            daemonControlState = daemonManager.controlState
+        }
     }
 
     @MainActor
@@ -95,6 +115,8 @@ final class AppViewModel {
     private func pollDaemonStatus() async {
         isDaemonOnline = await bridge.checkStatus()
         isCaptureActive = bridge.captureActive
+        daemonManager.syncControlState(isOnline: isDaemonOnline, isCaptureActive: isCaptureActive)
+        daemonControlState = daemonManager.controlState
     }
 
     private func startWALWatcher() {

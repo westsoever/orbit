@@ -3,6 +3,7 @@ import Foundation
 protocol OrbitBridgeProtocol: Sendable {
     var isDaemonAlive: Bool { get }
     func checkStatus() async -> Bool
+    func requestShutdown() async throws
     func fetchPendingTasks() async -> [TaskLogEntry]
     func approve(id: Int64, prompt: String) async throws
     func skip(id: Int64) async throws

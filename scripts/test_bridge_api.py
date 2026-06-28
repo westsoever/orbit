@@ -90,6 +90,7 @@ def _run_embedded_tests(port: int) -> int:
             port=port,
             db_ref=(con, lock),
             capture_active_ref=capture_active,
+            shutdown_hook=lambda: None,
         )
         task_id = _seed_task(con)
         time.sleep(0.2)
@@ -189,6 +190,13 @@ def _run_embedded_tests(port: int) -> int:
                     failures += 1
                 else:
                     print("OK   POST /api/chat (SSE)")
+
+            status, _ = _request("POST", "/api/shutdown", port=port)
+            if status != 204:
+                print("FAIL POST /api/shutdown", status)
+                failures += 1
+            else:
+                print("OK   POST /api/shutdown")
 
             status, _ = _request("GET", "/api/nope", port=port)
             if status != 404:
