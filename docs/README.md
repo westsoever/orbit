@@ -2,6 +2,7 @@
 
 | Document | Audience | Description |
 |----------|----------|-------------|
+| [architecture-context-routing.md](architecture-context-routing.md) | Mentors / stakeholders | Context flow diagram (capture vs check) |
 | [../README.md](../README.md) | All users | Install, CLI, architecture, troubleshooting |
 | [capture-compatibility.md](capture-compatibility.md) | Developers | App-by-app capture tier matrix |
 | [gdpr/PRIVACY_POLICY.md](gdpr/PRIVACY_POLICY.md) | End users / B2C | What Orbit captures and stores |
