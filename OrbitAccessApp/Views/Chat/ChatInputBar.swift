@@ -95,6 +95,9 @@ struct ChatInputBar: View {
         if model.canUseAIChat {
             return "Ask Orbit anything…"
         }
+        if model.canUseLiveServices && model.shouldShowCloudAIEnablePrompt {
+            return "Enable Cloud AI above, or search saved context…"
+        }
         return "Search your context (offline — start daemon for AI answers)…"
     }
 

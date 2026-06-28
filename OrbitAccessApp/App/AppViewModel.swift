@@ -23,8 +23,12 @@ final class AppViewModel {
     /// Lexical search + offline snippet chat
     var canSearchLocally: Bool { canBrowseContext }
 
-    /// AI streaming chat via bridge
-    var canUseAIChat: Bool { canUseLiveServices }
+    /// AI streaming chat via bridge (requires cloud enablement or BYOK)
+    var canUseAIChat: Bool {
+        canUseLiveServices && (isCloudAIEnabled || cloudAI.hasBYOK())
+    }
+    var isCloudAIEnabled = false
+    var showCloudAISettings = false
     var bootstrapFailure: OrbitDBError?
     var daemonControlState: DaemonControlState = .offline
 
@@ -35,6 +39,7 @@ final class AppViewModel {
 
     let bridge = OrbitBridgeClient()
     let dbReader = OrbitDBReader()
+    let cloudAI = CloudAIService.shared
     private let daemonManager: DaemonManager
 
     @ObservationIgnored private let walWatcher = WALWatcher()
@@ -47,6 +52,15 @@ final class AppViewModel {
         taskStore.configure(bridge: bridge, dbReader: dbReader)
         searchStore.configure(bridge: bridge, dbReader: dbReader)
         insightStore.configure(dbReader: dbReader)
+        refreshCloudAIState()
+    }
+
+    func refreshCloudAIState() {
+        isCloudAIEnabled = cloudAI.isEnabled()
+    }
+
+    var shouldShowCloudAIEnablePrompt: Bool {
+        cloudAI.shouldShowEnablePrompt(isDaemonOnline: isDaemonOnline)
     }
 
     @MainActor

@@ -19,6 +19,10 @@ struct MainChatView: View {
         .animation(.easeInOut(duration: 0.2), value: isLandingMode)
         .background(Color.orbitChatBackground(for: colorScheme))
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .sheet(isPresented: Bindable(model).showCloudAISettings) {
+            CloudAISettingsView()
+                .padding()
+        }
     }
 
     private var landingView: some View {
@@ -27,6 +31,9 @@ struct MainChatView: View {
             ChatHeroView()
             Spacer(minLength: 20)
             VStack(spacing: 12) {
+                if model.shouldShowCloudAIEnablePrompt {
+                    CloudAIEnableCard()
+                }
                 ChatInputBar(showSpinOff: true, isCompact: false)
                 if model.canBrowseContext && !model.canUseAIChat {
                     offlineModeBadge
@@ -53,6 +60,11 @@ struct MainChatView: View {
 
             ChatInputBar(showSpinOff: true, isCompact: true)
                 .padding(.horizontal, 16)
+
+            if model.shouldShowCloudAIEnablePrompt {
+                CloudAIEnableCard()
+                    .padding(.horizontal, 16)
+            }
 
             if model.canBrowseContext && !model.canUseAIChat {
                 offlineModeBadge

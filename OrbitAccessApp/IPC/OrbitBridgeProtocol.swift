@@ -21,7 +21,11 @@ enum OrbitBridgeError: LocalizedError {
         switch self {
         case .invalidResponse: return "Invalid response from Orbit daemon."
         case .httpStatus(let code): return "Orbit daemon returned HTTP \(code)."
-        case .serverMessage(let message): return message
+        case .serverMessage(let message):
+            if message.contains("rate_limit") || message.contains("Daily cloud AI limit") {
+                return "Daily cloud AI limit reached. Try again tomorrow or add your own API key in ~/.orbit/.env"
+            }
+            return message
         case .daemonOffline: return "Orbit daemon is offline."
         }
     }

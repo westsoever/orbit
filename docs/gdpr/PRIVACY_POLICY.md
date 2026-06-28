@@ -26,6 +26,21 @@ Orbit does **not** log keystrokes globally, continuous webcam, or always-on full
 - Embeddings (when enabled) are stored locally via sqlite-vec.
 - No raw capture payload is sent to Orbit cloud services by the capture daemon.
 
+## Orbit Cloud AI (opt-in)
+
+Orbit Access can optionally use **Orbit Cloud AI** for chat answers. This is **disabled by default** and requires an explicit in-app enable action.
+
+When enabled:
+
+- The app registers an anonymous device token with the Orbit Cloud AI relay.
+- For each chat message, **context snippets** retrieved locally from your `orbit.db` plus your question are sent to the relay, which forwards them to an LLM provider to generate an answer.
+- Raw capture logs, full database exports, screenshots, and file contents are **not** transmitted.
+- The relay does not retain message bodies after the request completes (metadata such as token counts may be logged for abuse prevention).
+
+Rate limits apply on the shared service (approximately 40 chat messages per device per day unless otherwise configured).
+
+Alternatively, you may supply your own LLM API key in `~/.orbit/.env` (`OPENROUTER_API_KEY=...`), in which case prompts go directly from your Mac to your chosen provider and Orbit Cloud AI is not used.
+
 ## Retention
 
 - Default retention: **90 days** (`retention_days` in policy).

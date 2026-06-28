@@ -274,7 +274,9 @@ class _BridgeHandler(BaseHTTPRequestHandler):
             answer = complete(_CHAT_SYSTEM, user_msg)
         except Exception as exc:
             logger.exception("chat completion failed")
-            _send_json(self, 503, {"error": str(exc)})
+            from orbit.check.llm import format_completion_error
+
+            _send_json(self, 503, {"error": format_completion_error(exc)})
             return
         self._stream_chat_sse(answer or "", hits)
 
