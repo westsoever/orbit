@@ -28,6 +28,9 @@ struct MainChatView: View {
             Spacer(minLength: 24)
             VStack(spacing: 12) {
                 ChatInputBar(showSpinOff: true, isCompact: false)
+                if model.canBrowseContext && !model.canUseAIChat {
+                    offlineModeBadge
+                }
                 ChatSuggestionChips()
             }
             .padding(.horizontal, 24)
@@ -52,7 +55,19 @@ struct MainChatView: View {
             ChatInputBar(showSpinOff: true, isCompact: true)
                 .shadow(color: .black.opacity(0.04), radius: 2, y: 1)
                 .padding(.horizontal, 16)
-                .padding(.bottom, 12)
+
+            if model.canBrowseContext && !model.canUseAIChat {
+                offlineModeBadge
+                    .padding(.horizontal, 16)
+            }
         }
+        .padding(.bottom, 12)
+    }
+
+    private var offlineModeBadge: some View {
+        Text("Offline mode — keyword search over saved context")
+            .font(.caption2)
+            .foregroundStyle(Color.orbitSecondaryText(for: colorScheme))
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

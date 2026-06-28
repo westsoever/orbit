@@ -143,12 +143,14 @@ actor OrbitBridgeClient: OrbitBridgeProtocol {
 
 ### Offline fallback
 
-`checkStatus()` failure (connection refused / 503) → app enters **read-only mode**:
-- A "Daemon offline" badge renders in the Sidebane (`DaemonStatusIndicator` red) with a **Start** button.
+`checkStatus()` failure (connection refused / 503) → app enters **browse mode** (Track A only):
+- Sidebane shows orange "Daemon stopped" with **Start** button; status bar glyph `◐` (browse-only).
 - When online: green dot + "Daemon running"; pulsing dot + "Capturing" when `capture_active` is true; **Stop** button available.
-- Approve/Skip buttons disable; the chat input shows "Start the daemon from the sidebar to enable search & chat".
-- Historical browsing (timeline, recent captures, lexical search) keeps working via Track A.
-- A 5s status poll auto-restores full mode when the daemon returns.
+- Approve/Skip buttons disable (writes require bridge); pending tasks still visible from read-only SQL.
+- Chat input stays enabled: offline queries run lexical FTS5 and return formatted snippets (no LLM). Placeholder explains AI needs daemon.
+- Lexical search, find-by-app/time, timeline, and productivity score keep working via Track A (`OrbitDBReader`).
+- Hybrid/semantic search and LLM streaming chat require the daemon (sqlite-vec + MiniLM + OpenRouter live in Python).
+- A 5s status poll auto-upgrades to full mode when the daemon returns.
 - `DaemonManager` shells out to `orbit start --detach --no-embed` / `orbit stop` (or `POST /api/shutdown` when bridge is up).
 
 ---

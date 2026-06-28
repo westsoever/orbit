@@ -92,8 +92,11 @@ final class OrbitBridgeClient: OrbitBridgeProtocol, @unchecked Sendable {
                     request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
                     request.httpBody = try JSONEncoder().encode(["query": query])
                     let (bytes, response) = try await session.bytes(for: request)
-                    guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-                        throw OrbitBridgeError.httpStatus((response as? HTTPURLResponse)?.statusCode ?? 0)
+                    guard let http = response as? HTTPURLResponse else {
+                        throw OrbitBridgeError.invalidResponse
+                    }
+                    guard http.statusCode == 200 else {
+                        throw try await Self.bridgeError(from: bytes, statusCode: http.statusCode)
                     }
                     for try await line in bytes.lines {
                         guard line.hasPrefix("data: ") else { continue }
@@ -126,6 +129,24 @@ final class OrbitBridgeClient: OrbitBridgeProtocol, @unchecked Sendable {
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw OrbitBridgeError.invalidResponse
         }
+    }
+
+    private static func bridgeError(
+        from bytes: URLSession.AsyncBytes,
+        statusCode: Int
+    ) async throws -> OrbitBridgeError {
+        var errorData = Data()
+        errorData.reserveCapacity(512)
+        for try await byte in bytes {
+            errorData.append(byte)
+            if errorData.count >= 4096 { break }
+        }
+        if let json = try? JSONSerialization.jsonObject(with: errorData) as? [String: Any],
+           let message = json["error"] as? String,
+           !message.isEmpty {
+            return .serverMessage(message)
+        }
+        return .httpStatus(statusCode)
     }
 
     private static func decodeSSEChunk(_ payload: String) -> ChatChunk? {

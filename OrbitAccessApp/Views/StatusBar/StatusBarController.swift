@@ -45,7 +45,8 @@ final class StatusBarController: NSObject {
 
     private var statusGlyph: String {
         guard let viewModel else { return "○" }
-        if !viewModel.isDaemonOnline { return "×" }
+        if !viewModel.canBrowseContext { return "×" }
+        if viewModel.canBrowseContext && !viewModel.canUseLiveServices { return "◐" }
         if viewModel.isCaptureActive { return "●" }
         return "○"
     }

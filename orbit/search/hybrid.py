@@ -15,6 +15,27 @@ def _get_model() -> SentenceTransformer:
             _MODEL = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
     return _MODEL
 
+def _has_vec_atoms(con: sqlite3.Connection) -> bool:
+    row = con.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='vec_atoms'"
+    ).fetchone()
+    return row is not None
+
+
+def search_bridge(
+    con: sqlite3.Connection,
+    query: str,
+    limit: int = 20,
+    app_bundle_id: str | None = None,
+) -> list[Hit]:
+    """Hybrid search when embeddings exist; lexical FTS otherwise (--no-embed)."""
+    if _has_vec_atoms(con):
+        return search_hybrid(con, query, limit=limit, app_bundle_id=app_bundle_id)
+    from orbit.search.lexical import search_lexical
+
+    return search_lexical(con, query, limit=limit, app_bundle_id=app_bundle_id)
+
+
 def search_hybrid(
     con: sqlite3.Connection,
     query: str,

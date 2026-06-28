@@ -33,6 +33,28 @@ struct TaskLogEntry: Codable, FetchableRecord, Identifiable, Sendable {
         exitCode = try container.decodeIfPresent(Int.self, forKey: .exitCode)
     }
 
+    init(
+        id: Int64,
+        timestamp: String = "",
+        title: String? = nil,
+        description: String? = nil,
+        originalPrompt: String? = nil,
+        approvedPrompt: String? = nil,
+        agentType: String? = nil,
+        status: String,
+        exitCode: Int? = nil
+    ) {
+        self.id = id
+        self.timestamp = timestamp
+        self.title = title
+        self.description = description
+        self.originalPrompt = originalPrompt
+        self.approvedPrompt = approvedPrompt
+        self.agentType = agentType
+        self.status = status
+        self.exitCode = exitCode
+    }
+
     var typedAgent: AgentType? {
         AgentType(rawValueOrNil: agentType)
     }

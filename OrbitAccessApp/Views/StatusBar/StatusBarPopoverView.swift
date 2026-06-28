@@ -60,12 +60,24 @@ struct StatusBarPopoverView: View {
     private var statusDot: some View {
         HStack(spacing: 4) {
             Circle()
-                .fill(model.isDaemonOnline ? Color.green : Color.red)
+                .fill(statusDotColor)
                 .frame(width: 6, height: 6)
-            Text(model.isDaemonOnline ? "Online" : "Offline")
+            Text(statusLabel)
                 .font(.caption2)
                 .foregroundStyle(Color.orbitSecondaryText(for: colorScheme))
         }
+    }
+
+    private var statusDotColor: Color {
+        if !model.canBrowseContext { return .red }
+        if model.canUseLiveServices { return .green }
+        return .orange
+    }
+
+    private var statusLabel: String {
+        if !model.canBrowseContext { return "No database" }
+        if model.canUseLiveServices { return "Online" }
+        return "Browse only"
     }
 }
 

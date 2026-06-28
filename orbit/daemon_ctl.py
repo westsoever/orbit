@@ -1,13 +1,15 @@
 """Start/stop helpers for detached Orbit daemon processes."""
 from __future__ import annotations
 
+import contextlib
+import fcntl
 import os
 import subprocess
 import sys
 import time
 import urllib.error
 import urllib.request
-from typing import Sequence
+from typing import Iterator, Sequence
 
 from orbit.daemon_pid import (
     default_pid_path,
@@ -19,6 +21,7 @@ from orbit.daemon_pid import (
 
 DEFAULT_LOG_PATH = os.path.expanduser("~/.orbit/daemon.log")
 DEFAULT_HEALTH_URL = "http://127.0.0.1:8765/health"
+SPAWN_LOCK_PATH = os.path.expanduser("~/.orbit/daemon.lock")
 
 
 def _health_ok(url: str = DEFAULT_HEALTH_URL, timeout: float = 0.5) -> bool:
@@ -48,35 +51,77 @@ def build_daemon_argv(cli_argv: Sequence[str]) -> list[str]:
     return [sys.executable, "-m", "orbit.capture.daemon", *cli_argv]
 
 
+@contextlib.contextmanager
+def daemon_spawn_lock() -> Iterator[None]:
+    """Exclusive lock while deciding whether to spawn a new daemon."""
+    os.makedirs(os.path.dirname(SPAWN_LOCK_PATH), exist_ok=True)
+    fh = open(SPAWN_LOCK_PATH, "w", encoding="utf-8")
+    try:
+        fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
+        yield
+    finally:
+        fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+        fh.close()
+
+
+def is_daemon_running(health_url: str = DEFAULT_HEALTH_URL) -> bool:
+    """Return True when health responds or the PID file refers to a live process."""
+    if _health_ok(health_url):
+        return True
+    pid = read_pid()
+    return pid is not None and is_process_alive(pid)
+
+
+def running_daemon_pid(health_url: str = DEFAULT_HEALTH_URL) -> int | None:
+    """Return the PID of a running daemon, or None if none is active."""
+    pid = read_pid()
+    if is_daemon_running(health_url):
+        if pid is not None and is_process_alive(pid):
+            return pid
+        return pid
+    if pid is not None and is_process_alive(pid):
+        return pid
+    return None
+
+
 def spawn_detached(
     daemon_argv: list[str],
     *,
     log_path: str = DEFAULT_LOG_PATH,
     health_url: str = DEFAULT_HEALTH_URL,
     wait_timeout_s: float = 10.0,
-) -> int:
-    """Spawn daemon in a new session; wait until health responds. Returns child PID."""
-    os.makedirs(os.path.dirname(os.path.expanduser(log_path)), exist_ok=True)
-    log_fh = open(log_path, "a", encoding="utf-8")
-    proc = subprocess.Popen(
-        daemon_argv,
-        stdout=log_fh,
-        stderr=subprocess.STDOUT,
-        start_new_session=True,
-    )
-    log_fh.close()
+) -> tuple[int, bool]:
+    """Spawn daemon in a new session if needed.
 
-    if wait_for_health(url=health_url, timeout_s=wait_timeout_s):
-        return proc.pid
+    Returns ``(pid, started_new)``. When a daemon is already running, returns its
+    PID and ``started_new=False`` without spawning another process.
+    """
+    with daemon_spawn_lock():
+        existing = running_daemon_pid(health_url)
+        if existing is not None:
+            return existing, False
 
-    # Child may still be starting; fall back to pid file or process liveness.
-    pid = read_pid() or proc.pid
-    if is_process_alive(pid):
-        return pid
-    raise RuntimeError(
-        f"Orbit daemon failed to start within {wait_timeout_s:.0f}s "
-        f"(see {log_path})"
-    )
+        os.makedirs(os.path.dirname(os.path.expanduser(log_path)), exist_ok=True)
+        log_fh = open(log_path, "a", encoding="utf-8")
+        proc = subprocess.Popen(
+            daemon_argv,
+            stdout=log_fh,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+        )
+        log_fh.close()
+
+        if wait_for_health(url=health_url, timeout_s=wait_timeout_s):
+            return proc.pid, True
+
+        # Child may still be starting; fall back to pid file or process liveness.
+        pid = read_pid() or proc.pid
+        if is_process_alive(pid):
+            return pid, True
+        raise RuntimeError(
+            f"Orbit daemon failed to start within {wait_timeout_s:.0f}s "
+            f"(see {log_path})"
+        )
 
 
 def stop_daemon(

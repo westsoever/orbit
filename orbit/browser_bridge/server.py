@@ -237,9 +237,9 @@ class _BridgeHandler(BaseHTTPRequestHandler):
             return
         con, _lock = db_ref
         try:
-            from orbit.search.hybrid import search_hybrid
+            from orbit.search.hybrid import search_bridge
 
-            hits = [_hit_to_dict(h) for h in search_hybrid(con, q, limit=limit)]
+            hits = [_hit_to_dict(h) for h in search_bridge(con, q, limit=limit)]
         except Exception as exc:
             logger.exception("search failed")
             _send_json(self, 503, {"error": str(exc)})
@@ -259,9 +259,9 @@ class _BridgeHandler(BaseHTTPRequestHandler):
             return
         con, _lock = db_ref
         try:
-            from orbit.search.hybrid import search_hybrid
+            from orbit.search.hybrid import search_bridge
 
-            hits = search_hybrid(con, query, limit=8)
+            hits = search_bridge(con, query, limit=8)
         except Exception as exc:
             logger.exception("chat search failed")
             _send_json(self, 503, {"error": str(exc)})

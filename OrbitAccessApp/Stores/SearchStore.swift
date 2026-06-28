@@ -6,11 +6,18 @@ enum SearchMode: String, Sendable {
     case hybrid
 }
 
+enum SearchTier: Sendable {
+    case none
+    case lexical
+    case hybrid
+}
+
 @Observable
 final class SearchStore {
     var hits: [SearchHit] = []
     var query = ""
     var mode: SearchMode = .hybrid
+    var searchTier: SearchTier = .none
     var isSearching = false
     var lastError: String?
     var panelActive = false
@@ -45,11 +52,12 @@ final class SearchStore {
     }
 
     @MainActor
-    func search(isDaemonOnline: Bool) async {
+    func search(canUseLiveServices: Bool, canSearchLocally: Bool) async {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             hits = []
             lastError = nil
+            searchTier = .none
             return
         }
         isSearching = true
@@ -57,19 +65,26 @@ final class SearchStore {
         defer { isSearching = false }
         panelActive = true
 
-        if mode == .hybrid, isDaemonOnline, let bridge {
+        guard canSearchLocally, dbReader != nil else {
+            hits = []
+            searchTier = .none
+            lastError = "Orbit database is not available."
+            return
+        }
+
+        if canUseLiveServices, mode == .hybrid, let bridge {
             let hybridHits = await bridge.search(trimmed, limit: 20)
             if !hybridHits.isEmpty {
                 hits = hybridHits
+                searchTier = .hybrid
                 return
             }
         }
 
         guard let dbReader else {
             hits = []
-            lastError = isDaemonOnline
-                ? "Search unavailable — select orbit.db or enable embeddings."
-                : "Start `orbit start` for hybrid search, or select orbit.db for local search."
+            searchTier = .none
+            lastError = "Orbit database is not available."
             return
         }
 
@@ -88,6 +103,8 @@ final class SearchStore {
         } else {
             hits = (try? dbReader.lexicalSearch(trimmed, limit: 20)) ?? []
         }
+
+        searchTier = .lexical
 
         if hits.isEmpty {
             lastError = "No matches for \"\(trimmed)\"."

@@ -13,8 +13,12 @@ struct DaemonStatusIndicator: View {
                     .font(.caption)
                     .foregroundStyle(labelColor)
                     .kerning(-0.1)
-                if !model.isDaemonOnline && !isTransitioning {
-                    Text("Capture & chat need the daemon")
+                if !model.canBrowseContext && !isTransitioning {
+                    Text("Could not load ~/.orbit/orbit.db")
+                        .font(.caption2)
+                        .foregroundStyle(Color.orbitSecondaryText(for: colorScheme))
+                } else if model.canBrowseContext && !model.canUseLiveServices && !isTransitioning {
+                    Text("Browsing saved context — start daemon for capture & AI")
                         .font(.caption2)
                         .foregroundStyle(Color.orbitSecondaryText(for: colorScheme))
                 }
@@ -105,21 +109,30 @@ struct DaemonStatusIndicator: View {
         case .error:
             return "Daemon offline"
         case .running, .offline:
+            if !model.canBrowseContext {
+                return "Database not loaded"
+            }
             if model.isDaemonOnline {
                 return model.isCaptureActive ? "Capturing" : "Daemon running"
             }
-            return "Daemon offline"
+            return "Daemon stopped"
         }
     }
 
     private var dotColor: Color {
+        if !model.canBrowseContext {
+            return Color.orange
+        }
         if model.isDaemonOnline {
             return model.isCaptureActive ? Color.green : Color.green
         }
-        return Color.red
+        return Color.orange
     }
 
     private var labelColor: Color {
-        model.isDaemonOnline ? Color.primary : Color.red
+        if !model.canBrowseContext {
+            return Color.orange
+        }
+        return model.isDaemonOnline ? Color.primary : Color.orbitSecondaryText(for: colorScheme)
     }
 }

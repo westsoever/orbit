@@ -9,6 +9,9 @@ struct SemanticSearchFunction: AIFunction {
     func execute(_ context: AIFunctionContext) async {
         await MainActor.run {
             context.searchStore.activateSemanticSearch()
+            if !context.canUseLiveServices {
+                context.searchStore.mode = .lexical
+            }
         }
     }
 }

@@ -65,11 +65,32 @@ def main() -> None:
         help="Disable FSEvents workspace capture (even if tier_fsevents in policy)",
     )
     parser.add_argument(
+        "--no-statusbar",
+        action="store_true",
+        help="Skip the Python menu bar indicator",
+    )
+    parser.add_argument(
         "--purge-retention",
         action="store_true",
         help="On startup, delete capture events older than policy retention_days",
     )
     args = parser.parse_args()
+
+    from orbit.ui.macos_app import hide_from_dock
+
+    hide_from_dock()
+
+    from orbit.daemon_ctl import is_daemon_running
+    from orbit.daemon_pid import read_pid
+
+    health_url = f"http://127.0.0.1:{args.browser_bridge_port}/health"
+    if is_daemon_running(health_url):
+        pid = read_pid()
+        logger.error(
+            "Another Orbit daemon is already running (pid %s).",
+            pid if pid is not None else "unknown",
+        )
+        sys.exit(1)
 
     from orbit.capture.policy import load_policy
 
@@ -102,8 +123,11 @@ def main() -> None:
         if n:
             logger.info("Purged %d events older than %d days", n, policy.retention_days)
 
-    statusbar = OrbitStatusBar()
-    logger.info("Status bar initialized")
+    if args.no_statusbar:
+        statusbar = None
+    else:
+        statusbar = OrbitStatusBar()
+        logger.info("Status bar initialized")
 
     capture_active = threading.Event()
 
@@ -145,8 +169,14 @@ def main() -> None:
         kwargs={
             "max_depth": args.max_depth,
             "policy": policy,
-            "on_capture_start": lambda: (capture_active.set(), statusbar.set_active()),
-            "on_capture_done": lambda: (capture_active.clear(), statusbar.set_idle()),
+            "on_capture_start": lambda: (
+                capture_active.set(),
+                statusbar.set_active() if statusbar else None,
+            ),
+            "on_capture_done": lambda: (
+                capture_active.clear(),
+                statusbar.set_idle() if statusbar else None,
+            ),
         },
         daemon=True,
         name="capture-worker",

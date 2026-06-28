@@ -21,7 +21,8 @@ enum SidebaneSection: String, CaseIterable, Identifiable {
 struct AIFunctionContext {
     let searchStore: SearchStore
     let chatStore: ChatStore
-    let isDaemonOnline: Bool
+    let canBrowseContext: Bool
+    let canUseLiveServices: Bool
 
     @MainActor
     func prefillChat(_ text: String) {

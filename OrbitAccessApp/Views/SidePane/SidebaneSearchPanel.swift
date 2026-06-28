@@ -23,6 +23,10 @@ struct SidebaneSearchPanel: View {
 
             if model.searchStore.isSearching {
                 LoadingIndicator()
+            } else if model.searchStore.searchTier == .lexical, !model.canUseLiveServices, model.searchStore.panelActive {
+                Text("Keyword search (start daemon for semantic search).")
+                    .font(.caption2)
+                    .foregroundStyle(Color.orbitSecondaryText(for: colorScheme))
             } else if let error = model.searchStore.lastError {
                 Text(error)
                     .font(.caption2)
@@ -49,7 +53,12 @@ struct SidebaneSearchPanel: View {
     }
 
     private func runSearch() {
-        Task { await model.searchStore.search(isDaemonOnline: model.isDaemonOnline) }
+        Task {
+            await model.searchStore.search(
+                canUseLiveServices: model.canUseLiveServices,
+                canSearchLocally: model.canSearchLocally
+            )
+        }
     }
 
     private func stripHTML(_ html: String) -> String {

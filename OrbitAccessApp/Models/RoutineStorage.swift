@@ -2,8 +2,7 @@ import Foundation
 
 enum RoutineStorage {
     private static var fileURL: URL {
-        FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".orbit/routines.json")
+        OrbitPaths.orbitDirectory.appendingPathComponent("routines.json")
     }
 
     static func load() -> [RoutineBlock] {
@@ -16,8 +15,7 @@ enum RoutineStorage {
     }
 
     static func save(_ routines: [RoutineBlock]) {
-        let dir = fileURL.deletingLastPathComponent()
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try? OrbitPaths.ensureOrbitDirectoryExists()
         if let data = try? JSONEncoder().encode(routines) {
             try? data.write(to: fileURL, options: .atomic)
         }

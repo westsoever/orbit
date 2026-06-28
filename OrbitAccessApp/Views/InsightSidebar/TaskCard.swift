@@ -56,14 +56,16 @@ struct TaskCard: View {
             .buttonStyle(.borderedProminent)
             .tint(agentType.color)
             .controlSize(.small)
-            .disabled(!model.isDaemonOnline)
+            .disabled(!model.canUseLiveServices)
+            .help(model.canUseLiveServices ? "Approve task" : "Start daemon to approve")
 
             Button("Skip") {
                 skipTask()
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
-            .disabled(!model.isDaemonOnline)
+            .disabled(!model.canUseLiveServices)
+            .help(model.canUseLiveServices ? "Skip task" : "Start daemon to skip")
 
             Spacer()
         }

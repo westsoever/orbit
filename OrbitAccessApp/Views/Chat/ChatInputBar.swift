@@ -20,7 +20,7 @@ struct ChatInputBar: View {
             .font(.body)
             .kerning(-0.1)
             .focused($isFocused)
-            .disabled(!model.isDaemonOnline)
+            .disabled(!canType)
             .onSubmit { sendMessage() }
             .padding(.horizontal, 16)
             .padding(.top, 12)
@@ -82,10 +82,18 @@ struct ChatInputBar: View {
         .help("Attachments coming soon")
     }
 
+    private var canType: Bool {
+        model.canBrowseContext || model.canUseLiveServices
+    }
+
     private var placeholderText: String {
-        model.isDaemonOnline
-            ? "Ask Orbit anything…"
-            : "Start the daemon from the sidebar to enable search & chat"
+        if !model.canBrowseContext {
+            return "Waiting for Orbit database…"
+        }
+        if model.canUseAIChat {
+            return "Ask Orbit anything…"
+        }
+        return "Search your context (offline — start daemon for AI answers)…"
     }
 
     private var sendButton: some View {
@@ -102,7 +110,11 @@ struct ChatInputBar: View {
         .buttonStyle(.plain)
         .disabled(!canSend)
         .keyboardShortcut(.return, modifiers: .command)
-        .help("Send message")
+        .help(sendHelp)
+    }
+
+    private var sendHelp: String {
+        model.canUseAIChat ? "Send message" : "Search saved context"
     }
 
     private var spinOffButton: some View {
@@ -127,12 +139,19 @@ struct ChatInputBar: View {
     }
 
     private var canSend: Bool {
-        model.isDaemonOnline && !model.chatStore.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !model.chatStore.isStreaming
+        !model.chatStore.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !model.chatStore.isStreaming
+            && (model.canUseAIChat || model.canSearchLocally)
     }
 
     private func sendMessage() {
         guard canSend else { return }
-        Task { await model.chatStore.send() }
+        Task {
+            await model.chatStore.send(
+                canUseAIChat: model.canUseAIChat,
+                canSearchLocally: model.canSearchLocally
+            )
+        }
     }
 
     private func spinOffChat() {

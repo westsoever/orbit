@@ -11,9 +11,11 @@ final class ChatStore {
     var focusRequested = false
 
     @ObservationIgnored private var bridge: OrbitBridgeProtocol?
+    @ObservationIgnored private var dbReader: OrbitDBReader?
 
-    func configure(bridge: OrbitBridgeProtocol) {
+    func configure(bridge: OrbitBridgeProtocol, dbReader: OrbitDBReader) {
         self.bridge = bridge
+        self.dbReader = dbReader
     }
 
     func prefillInput(_ text: String) {
@@ -29,9 +31,17 @@ final class ChatStore {
     }
 
     @MainActor
-    func send() async {
-        guard let bridge else { return }
-        await send(bridge: bridge)
+    func send(canUseAIChat: Bool, canSearchLocally: Bool) async {
+        let query = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return }
+
+        if canUseAIChat, let bridge {
+            await send(bridge: bridge)
+        } else if canSearchLocally, let dbReader {
+            await sendOffline(query: query, dbReader: dbReader)
+        } else {
+            errorMessage = "Orbit database is not available. Start the daemon for AI chat."
+        }
     }
 
     @MainActor
@@ -62,6 +72,34 @@ final class ChatStore {
             errorMessage = error.localizedDescription
         }
         isStreaming = false
+    }
+
+    @MainActor
+    private func sendOffline(query: String, dbReader: OrbitDBReader) async {
+        errorMessage = nil
+        inputText = ""
+        messages.append(ChatMessage(role: .user, content: query))
+        isStreaming = true
+
+        let hits = (try? dbReader.lexicalSearch(query, limit: 8)) ?? []
+        let body: String
+        if hits.isEmpty {
+            body = "No matching context found in your local history. Start the daemon to capture new activity or try different keywords."
+        } else {
+            body = formatOfflineContext(hits)
+                + "\n\n_(Offline mode — keyword matches only. Start the daemon for AI answers.)_"
+        }
+
+        var assistant = ChatMessage(role: .assistant, content: body, sourceAtoms: hits)
+        messages.append(assistant)
+        isStreaming = false
+    }
+
+    /// Context format copied from orbit/browser_bridge/server.py _build_chat_context
+    private func formatOfflineContext(_ hits: [SearchHit]) -> String {
+        hits.enumerated().map { index, hit in
+            "[\(index + 1)] \(hit.appName) — \(hit.windowTitle ?? "untitled")\n\(hit.snippetHtml)"
+        }.joined(separator: "\n\n")
     }
 
     private func replaceMessage(id: UUID, with message: ChatMessage) {

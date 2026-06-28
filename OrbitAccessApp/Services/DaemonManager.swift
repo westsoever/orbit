@@ -60,6 +60,12 @@ final class DaemonManager {
 
     func start() async throws {
         guard controlState != .starting else { return }
+
+        if await bridge.checkStatus() {
+            controlState = .running
+            return
+        }
+
         controlState = .starting
         defer {
             if controlState == .starting {
@@ -70,7 +76,7 @@ final class DaemonManager {
         let binary = try resolveOrbitBinary()
         let process = Process()
         process.executableURL = binary
-        process.arguments = ["start", "--detach", "--no-embed"]
+        process.arguments = ["start", "--detach", "--no-embed", "--no-statusbar"]
         var env = ProcessInfo.processInfo.environment
         if env["ORBIT_ROOT"] == nil, let root = Self.inferOrbitRoot(from: binary) {
             env["ORBIT_ROOT"] = root

@@ -14,12 +14,14 @@ protocol OrbitBridgeProtocol: Sendable {
 enum OrbitBridgeError: LocalizedError {
     case invalidResponse
     case httpStatus(Int)
+    case serverMessage(String)
     case daemonOffline
 
     var errorDescription: String? {
         switch self {
         case .invalidResponse: return "Invalid response from Orbit daemon."
         case .httpStatus(let code): return "Orbit daemon returned HTTP \(code)."
+        case .serverMessage(let message): return message
         case .daemonOffline: return "Orbit daemon is offline."
         }
     }

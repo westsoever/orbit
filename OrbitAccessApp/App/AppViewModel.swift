@@ -12,12 +12,23 @@ final class AppViewModel {
     var isDaemonOnline = false
     var isCaptureActive = false
     var isDatabaseReady = false
+
+    /// Historical data available from ~/.orbit/orbit.db
+    var canBrowseContext: Bool { isDatabaseReady && dbReader.isReady }
+
+    /// Hybrid search, LLM chat, capture indicator, task dispatch
+    var canUseLiveServices: Bool { isDaemonOnline }
+
+    /// Lexical search + offline snippet chat
+    var canSearchLocally: Bool { canBrowseContext }
+
+    /// AI streaming chat via bridge
+    var canUseAIChat: Bool { canUseLiveServices }
     var bootstrapFailure: OrbitDBError?
     var daemonControlState: DaemonControlState = .offline
 
     var seriousIssue: OrbitIssue? {
         guard let failure = bootstrapFailure else { return nil }
-        if case .openPanelCancelled = failure { return nil }
         return .databaseBootstrapFailed(message: failure.localizedDescription)
     }
 
@@ -30,8 +41,8 @@ final class AppViewModel {
 
     init() {
         daemonManager = DaemonManager(bridge: bridge)
-        chatStore.configure(bridge: bridge)
-        taskStore.configure(bridge: bridge)
+        chatStore.configure(bridge: bridge, dbReader: dbReader)
+        taskStore.configure(bridge: bridge, dbReader: dbReader)
         searchStore.configure(bridge: bridge, dbReader: dbReader)
         insightStore.configure(dbReader: dbReader)
     }
@@ -51,7 +62,9 @@ final class AppViewModel {
             bootstrapFailure = .databaseUnavailable
         }
         startStatusPolling()
-        taskStore.startPolling(bridge)
+        taskStore.startPolling(bridge: bridge) { [weak self] in
+            self?.canUseLiveServices ?? false
+        }
         insightStore.startAggregatePolling()
     }
 
@@ -98,7 +111,12 @@ final class AppViewModel {
 
     @MainActor
     func aiContext() -> AIFunctionContext {
-        AIFunctionContext(searchStore: searchStore, chatStore: chatStore, isDaemonOnline: isDaemonOnline)
+        AIFunctionContext(
+            searchStore: searchStore,
+            chatStore: chatStore,
+            canBrowseContext: canBrowseContext,
+            canUseLiveServices: canUseLiveServices
+        )
     }
 
     private func startStatusPolling() {
@@ -117,6 +135,7 @@ final class AppViewModel {
         isCaptureActive = bridge.captureActive
         daemonManager.syncControlState(isOnline: isDaemonOnline, isCaptureActive: isCaptureActive)
         daemonControlState = daemonManager.controlState
+        await taskStore.refresh(isDaemonOnline: isDaemonOnline)
     }
 
     private func startWALWatcher() {

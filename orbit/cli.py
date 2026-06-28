@@ -65,6 +65,11 @@ def main() -> None:
         action="store_true",
         help="Start daemon in background (logs to ~/.orbit/daemon.log)",
     )
+    start_p.add_argument(
+        "--no-statusbar",
+        action="store_true",
+        help="Skip the Python menu bar indicator (use when Orbit Access App is active)",
+    )
 
     stop_p = sub.add_parser("stop", help="Stop a detached capture daemon")
     stop_p.add_argument(
@@ -166,6 +171,8 @@ def main() -> None:
             sys.argv.append("--purge-retention")
         if getattr(args, "no_fsevents", False):
             sys.argv.append("--no-fsevents")
+        if getattr(args, "no_statusbar", False):
+            sys.argv.append("--no-statusbar")
 
         daemon_argv = sys.argv[1:]  # orbit-daemon flags without script name
 
@@ -175,14 +182,17 @@ def main() -> None:
             port = args.browser_bridge_port
             health_url = f"http://127.0.0.1:{port}/health"
             try:
-                pid = spawn_detached(
+                pid, started = spawn_detached(
                     build_daemon_argv(daemon_argv),
                     health_url=health_url,
                 )
             except RuntimeError as exc:
                 print(str(exc), file=sys.stderr)
                 sys.exit(1)
-            print(f"Orbit daemon started (pid {pid})")
+            if started:
+                print(f"Orbit daemon started (pid {pid})")
+            else:
+                print(f"Orbit daemon already running (pid {pid})")
             sys.exit(0)
 
         from orbit.capture.daemon import main as daemon_main
