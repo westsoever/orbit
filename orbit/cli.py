@@ -1,4 +1,13 @@
-"""orbit CLI — entry point for the `orbit` command."""
+"""Orbit CLI — entry point for the ``orbit`` command.
+
+Commands:
+
+- ``orbit start`` — run the capture daemon (default DB: ``~/.orbit/orbit.db``)
+- ``orbit check`` — detect tasks from context and optionally dispatch one
+
+On macOS, embeddings require a venv built with Homebrew Python (see README).
+Use ``orbit start --no-embed`` when SQLite extensions are unavailable.
+"""
 from __future__ import annotations
 
 import argparse
@@ -29,6 +38,22 @@ def main() -> None:
 
     if args.command == "start":
         import os
+
+        from orbit.storage.db import sqlite_supports_extensions
+
+        if not args.no_embed and not sqlite_supports_extensions():
+            print(
+                "WARNING: This Python build cannot load SQLite extensions; "
+                "capture will run without embeddings.\n"
+                f"  Interpreter: {sys.executable}\n"
+                "  Fix: activate the project venv (source .venv/bin/activate) and use "
+                "`python -c \"...\"` — not system `python3`.\n"
+                "  Or recreate venv: /opt/homebrew/bin/python3 -m venv .venv && "
+                "source .venv/bin/activate && pip install -e .\n"
+                "  Capture-only: orbit start --no-embed\n",
+                file=sys.stderr,
+            )
+
         db_path = os.path.expanduser(args.db)
         os.makedirs(os.path.dirname(db_path), exist_ok=True)
 

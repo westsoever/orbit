@@ -7,7 +7,11 @@ echo "=== sanity: macapptree ==="
 .venv/bin/python scripts/sanity_macapptree.py || echo "WARN: macapptree sanity failed (may need Accessibility permission)"
 
 echo "=== sanity: sqlite-vec ==="
-.venv/bin/python scripts/sanity_sqlite_vec.py
+if .venv/bin/python -c "import sqlite3; exit(0 if hasattr(sqlite3.connect(':memory:'), 'enable_load_extension') else 1)"; then
+  .venv/bin/python scripts/sanity_sqlite_vec.py
+else
+  echo "SKIP: sqlite-vec (Python build lacks loadable SQLite extensions; use Homebrew Python for embed support)"
+fi
 
 echo "=== sanity: embeddings ==="
 .venv/bin/python scripts/sanity_embed.py

@@ -66,17 +66,34 @@ orbit/ui/statusbar.py     macOS menu-bar icon (active/idle)
 
 Requires macOS 14+, Python 3.10+, and Accessibility permission granted to Terminal (System Settings → Privacy & Security → Accessibility).
 
+**Python note (macOS):** Embeddings require a Python build with loadable SQLite extensions. The python.org macOS installer often lacks this; Homebrew Python works:
+
 ```bash
+brew install python@3.13
+/opt/homebrew/bin/python3.13 -m venv .venv
+source .venv/bin/activate
 pip install -e .
+
+# Verify extension support — use `python` from the activated venv, not system python3:
+python -c "import sqlite3; sqlite3.connect(':memory:').enable_load_extension(True)"
+which python   # should be .../orbit/.venv/bin/python
+which orbit    # should be .../orbit/.venv/bin/orbit
 ```
+
+If extension support is unavailable, `orbit start --no-embed` still runs capture + full-text search (no vector embeddings).
 
 ---
 
 ## Usage
 
+Activate the venv first (`source .venv/bin/activate`). All commands below assume that.
+
 ```bash
 # Start the capture daemon (logs context to ~/.orbit/orbit.db)
 orbit start
+
+# Capture + FTS only — no embeddings (works without SQLite extension support)
+orbit start --no-embed
 
 # Detect tasks from today's context and optionally dispatch one
 orbit check
@@ -90,6 +107,19 @@ orbit check --dry-run
 # Use a local context file instead of GitHub
 orbit check --source local --context path/to/context.md
 ```
+
+---
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---------|-----|
+| `AttributeError: ... enable_load_extension` | Activate venv; verify with `python -c "..."` not `python3`. Recreate venv with `/opt/homebrew/bin/python3.13`. |
+| `ModuleNotFoundError: sqlite_vec` | Run `pip install -e .` inside an activated venv. |
+| `orbit: error: unrecognized arguments: # ...` | Shell comments must not be on the same line as commands. |
+| Daemon runs but no captures | Grant Accessibility permission (see `orbit/capture/PERMISSIONS.md`) and restart the terminal. |
+
+Run `./scripts/verify.sh` from the repo root (with venv active) to smoke-test sqlite-vec and embeddings.
 
 ---
 

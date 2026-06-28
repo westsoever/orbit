@@ -1,18 +1,29 @@
-"""
-Run with: python -m orbit.capture.daemon --db ./orbit.db [--no-embed]
+"""Orbit capture daemon — listens for app-focus events and logs AX context to SQLite.
+
+Entry points::
+
+    orbit start [--no-embed] [--db PATH]
+    python -m orbit.capture.daemon --db ./orbit.db [--no-embed]
+
+DB selection (see ``orbit.storage.db``):
+
+- Default: ``open_db`` with embed worker when SQLite extensions are available.
+- ``--no-embed`` or missing extension support: ``open_db_plain``, capture + FTS only.
+
+Requires macOS Accessibility permission (see ``orbit/capture/PERMISSIONS.md``).
 """
 from __future__ import annotations
 
 import argparse
 import logging
 import queue
+import sys
 import threading
 
 from PyObjCTools import AppHelper
 from orbit.capture.listener import AppFocusListener
 from orbit.capture.worker import run_capture_worker
-from orbit.embed.worker import run_embedding_worker
-from orbit.storage.db import open_db
+from orbit.storage.db import open_db, open_db_plain, sqlite_supports_extensions
 from orbit.ui.statusbar import OrbitStatusBar
 
 logging.basicConfig(
@@ -28,14 +39,26 @@ def main() -> None:
     parser.add_argument("--no-embed", action="store_true", help="Skip embedding worker")
     args = parser.parse_args()
 
-    con, lock = open_db(args.db)
-    logger.info("Database opened at %s", args.db)
+    use_embed = not args.no_embed and sqlite_supports_extensions()
+    if args.no_embed:
+        con, lock = open_db_plain(args.db)
+        logger.info("Database opened at %s (capture-only, no embeddings)", args.db)
+    elif use_embed:
+        con, lock = open_db(args.db)
+        logger.info("Database opened at %s", args.db)
+    else:
+        con, lock = open_db_plain(args.db)
+        logger.warning(
+            "SQLite extensions unavailable on %s; running capture-only (no embeddings). "
+            "Use Homebrew Python for full embed support — see README.",
+            sys.executable,
+        )
 
     statusbar = OrbitStatusBar()
     logger.info("Status bar initialized")
 
     focus_queue: queue.Queue = queue.Queue()
-    embed_queue: queue.Queue | None = None if args.no_embed else queue.Queue()
+    embed_queue: queue.Queue | None = None if not use_embed else queue.Queue()
 
     listener = AppFocusListener(q=focus_queue)
 
@@ -52,6 +75,8 @@ def main() -> None:
     capture_thread.start()
 
     if embed_queue is not None:
+        from orbit.embed.worker import run_embedding_worker
+
         embed_thread = threading.Thread(
             target=run_embedding_worker,
             args=(embed_queue, con, lock),
