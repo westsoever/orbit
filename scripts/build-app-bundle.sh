@@ -4,6 +4,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=orbit_access_bundle_resources.sh
+source "$ROOT/scripts/orbit_access_bundle_resources.sh"
 SOURCE_ROOT="${ORBIT_SOURCE_ROOT:-$ROOT}"
 APP_DIR="$SOURCE_ROOT/OrbitAccessApp"
 ORBIT_OUTPUT="${ORBIT_OUTPUT:-}"
@@ -137,15 +139,13 @@ if [[ "$ORBIT_SKIP_SWIFT" != "1" ]]; then
     error "Missing Info.bundle.plist"
   fi
 
-  if [[ -d "$APP_DIR/Resources/Assets.xcassets" ]]; then
-    cp -R "$APP_DIR/Resources/Assets.xcassets" "$RESOURCES/"
-  fi
+  install_orbit_access_bundle_resources "$APP_DIR" "$ORBIT_OUTPUT" "$SWIFT_CONFIG"
 
   ENTITLEMENTS="$APP_DIR/OrbitAccessApp.entitlements"
   if [[ -f "$ENTITLEMENTS" ]]; then
     status "Codesigning (ad-hoc)…"
-    codesign --force --sign - --entitlements "$ENTITLEMENTS" --deep "$ORBIT_OUTPUT" 2>/dev/null \
-      || status "WARNING: codesign failed; app may lack sandbox entitlements."
+    codesign_orbit_access_bundle "$ORBIT_OUTPUT" Orbit "$ENTITLEMENTS" \
+      || status "WARNING: codesign failed; app icon and sandbox entitlements may be missing."
   fi
 else
   status "Skipping Swift build (ORBIT_SKIP_SWIFT=1)"

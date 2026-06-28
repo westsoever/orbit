@@ -11,6 +11,8 @@ if [[ -d "/Applications/Orbit.app" && "${ORBIT_FORCE_DEV_BUILD:-}" != "1" ]]; th
 fi
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=orbit_access_bundle_resources.sh
+source "$ROOT/scripts/orbit_access_bundle_resources.sh"
 export ORBIT_ROOT="$ROOT"
 APP_DIR="$ROOT/OrbitAccessApp"
 BUNDLE="$ROOT/build/OrbitAccessApp.app"
@@ -49,16 +51,14 @@ swift build -c debug 2>&1
 mkdir -p "$BUNDLE/Contents/MacOS" "$BUNDLE/Contents/Resources"
 cp "$BIN" "$BUNDLE/Contents/MacOS/OrbitAccessApp"
 cp Resources/Info.bundle.plist "$BUNDLE/Contents/Info.plist"
-if [[ -d Resources/Assets.xcassets ]]; then
-  cp -R Resources/Assets.xcassets "$BUNDLE/Contents/Resources/"
-fi
+install_orbit_access_bundle_resources "$APP_DIR" "$BUNDLE" debug OrbitAccessApp
 chmod +x "$BUNDLE/Contents/MacOS/OrbitAccessApp"
 
 # Apply sandbox entitlements (direct ~/.orbit access, no Keychain bookmarks).
 ENTITLEMENTS="$APP_DIR/OrbitAccessApp.entitlements"
 if [[ -f "$ENTITLEMENTS" ]]; then
-  codesign --force --sign - --entitlements "$ENTITLEMENTS" --deep "$BUNDLE" 2>/dev/null \
-    || echo "Warning: codesign failed; app may lack sandbox entitlements." >&2
+  codesign_orbit_access_bundle "$BUNDLE" OrbitAccessApp "$ENTITLEMENTS" \
+    || echo "Warning: codesign failed; app icon and sandbox entitlements may be missing." >&2
 fi
 
 echo "Launching $BUNDLE"
