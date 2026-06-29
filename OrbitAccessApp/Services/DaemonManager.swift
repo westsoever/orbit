@@ -41,10 +41,10 @@ final class DaemonManager {
         let fm = FileManager.default
 
         var candidates: [URL] = []
-        candidates.append(URL(fileURLWithPath: "/Applications/Orbit.app/Contents/Resources/orbit"))
-        if let root = ProcessInfo.processInfo.environment["ORBIT_ROOT"] {
+        if let root = ProcessInfo.processInfo.environment["ORBIT_ROOT"], !root.isEmpty {
             candidates.append(URL(fileURLWithPath: root).appendingPathComponent(".venv/bin/orbit"))
         }
+        candidates.append(URL(fileURLWithPath: "/Applications/Orbit.app/Contents/Resources/orbit"))
         candidates.append(URL(fileURLWithPath: "/opt/homebrew/bin/orbit"))
 
         for url in candidates where fm.isExecutableFile(atPath: url.path) {

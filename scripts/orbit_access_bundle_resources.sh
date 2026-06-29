@@ -78,6 +78,15 @@ install_orbit_access_bundle_resources() {
   write_orbit_access_resource_bundle_plist "$resource_bundle_dest"
 }
 
+set_plist_lsenvironment() {
+  local plist="$1"
+  local key="$2"
+  local value="$3"
+  /usr/libexec/PlistBuddy -c "Add :LSEnvironment dict" "$plist" 2>/dev/null || true
+  /usr/libexec/PlistBuddy -c "Add :LSEnvironment:$key string $value" "$plist" 2>/dev/null \
+    || /usr/libexec/PlistBuddy -c "Set :LSEnvironment:$key $value" "$plist"
+}
+
 codesign_orbit_access_bundle() {
   local bundle_root="$1"
   local executable_name="$2"
