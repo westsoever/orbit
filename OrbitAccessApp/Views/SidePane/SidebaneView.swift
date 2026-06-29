@@ -10,7 +10,9 @@ struct SidebaneView: View {
                     SidebaneSearchPanel()
                 }
                 SearchDropdownMenu()
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 AgentsDropdownMenu()
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             Spacer(minLength: 0)
