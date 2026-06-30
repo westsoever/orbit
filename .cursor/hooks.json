@@ -6,6 +6,11 @@
         "command": ".cursor/hooks/auto-commit.sh",
         "timeout": 30
       }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": "memtrace route --hook --host cursor"
+      }
     ]
   }
 }
