@@ -23,7 +23,7 @@
 		31E17588732283DD9D13A1B4 /* AIFunctionProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC9666AD424EA33A0FBEC31E /* AIFunctionProtocol.swift */; };
 		327C7A20EECCD098097BC604 /* SectionHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC88DFFD58EC639E25DD4A4D /* SectionHeader.swift */; };
 		32B1CAA1AFB065ED53A10F7A /* TaskLogEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8354BD0C7FB5924891BB5FC8 /* TaskLogEntry.swift */; };
-		3E1125E88AB837160A092713 /* RecentCaptureList.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7C26D4BEDAEC625174D12AA /* RecentCaptureList.swift */; };
+		3E1125E88AB837160A092713 /* RecentNotesList.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7C26D4BEDAEC625174D12AA /* RecentNotesList.swift */; };
 		43D19435B96849EC39265BC8 /* OrbitBridgeClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6FF3B246A8AC2EB41EAEF84 /* OrbitBridgeClient.swift */; };
 		449CBDDF234DA76BA70E05E0 /* StatusBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3E44C7AC6A83F9C5AA1E2C1 /* StatusBarController.swift */; };
 		47548C287792F5B37B3AC576 /* AIFunctionRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7AC1B072E6201269640D08D /* AIFunctionRegistry.swift */; };
@@ -128,7 +128,7 @@
 		A96795CFAC996804AC2687A7 /* ProductivityScore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductivityScore.swift; sourceTree = "<group>"; };
 		AEB5DC30E713A61921379737 /* AgentPromptFunction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentPromptFunction.swift; sourceTree = "<group>"; };
 		B755775983DAE2555239D582 /* RoutineList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutineList.swift; sourceTree = "<group>"; };
-		B7C26D4BEDAEC625174D12AA /* RecentCaptureList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentCaptureList.swift; sourceTree = "<group>"; };
+		B7C26D4BEDAEC625174D12AA /* RecentNotesList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentNotesList.swift; sourceTree = "<group>"; };
 		BF6F9EB75967C33AEA74527A /* Color+Orbit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Orbit.swift"; sourceTree = "<group>"; };
 		C6FF3B246A8AC2EB41EAEF84 /* OrbitBridgeClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrbitBridgeClient.swift; sourceTree = "<group>"; };
 		CC9666AD424EA33A0FBEC31E /* AIFunctionProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIFunctionProtocol.swift; sourceTree = "<group>"; };
@@ -190,7 +190,7 @@
 				75532D1DCAEEF6B15E06A796 /* CalendarScheduleView.swift */,
 				7E734B34E2F6CFEBA045A827 /* InsightSidebarView.swift */,
 				613D4346B5CE07D6DFCEC324 /* ProductivityScoreGauge.swift */,
-				B7C26D4BEDAEC625174D12AA /* RecentCaptureList.swift */,
+				B7C26D4BEDAEC625174D12AA /* RecentNotesList.swift */,
 				B755775983DAE2555239D582 /* RoutineList.swift */,
 				6AF4267DCC4DB50AC3BEEC76 /* TaskCard.swift */,
 				5E2D7010E3CCA4DBF4BA7055 /* TaskCardList.swift */,
@@ -483,7 +483,7 @@
 				F3A2B1C0D9E8F7A6B5C4D3E2 /* OrbitSchemaInitializer.swift in Sources */,
 				7E76B0531299C47A4FF8489E /* ProductivityScore.swift in Sources */,
 				88CEF3A1FE23D286E270D586 /* ProductivityScoreGauge.swift in Sources */,
-				3E1125E88AB837160A092713 /* RecentCaptureList.swift in Sources */,
+				3E1125E88AB837160A092713 /* RecentNotesList.swift in Sources */,
 				D6D292502F8BC0C36F903ED7 /* RoutineList.swift in Sources */,
 				BA36D7085516808B1B33D08E /* SearchHit.swift in Sources */,
 				4A8D9955606A8A718FFDDF37 /* SearchStore.swift in Sources */,

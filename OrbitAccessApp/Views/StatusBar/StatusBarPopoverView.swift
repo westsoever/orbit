@@ -28,7 +28,7 @@ struct StatusBarPopoverView: View {
                     .font(.caption)
                     .foregroundStyle(Color.orbitSecondaryText(for: colorScheme))
                 Spacer()
-                if let lastApp = model.insightStore.recentCaptures.first?.appName {
+                if let lastApp = model.insightStore.recentNotes.first?.appName {
                     Label(lastApp, systemImage: "app")
                         .font(.caption)
                         .foregroundStyle(Color.orbitSecondaryText(for: colorScheme))
