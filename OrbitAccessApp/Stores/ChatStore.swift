@@ -124,10 +124,10 @@ final class ChatStore {
 
         let body: String
         if hits.isEmpty {
-            body = "No matching context found in your local history. Start the daemon to capture new activity or try different keywords."
+            body = "No matching context found in your local history. Capture new activity by using your Mac as usual, or try different keywords."
         } else {
             body = formatOfflineContext(hits)
-                + "\n\n_(Offline mode — keyword matches only. Enable Cloud AI, add an API key, or run Ollama for full answers.)_"
+                + "\n\n_(Keyword matches only. Configure Cloud AI or a local Ollama model above for full answers.)_"
         }
         let content = [preamble, body].compactMap { $0 }.joined(separator: "\n\n")
         let assistant = ChatMessage(role: .assistant, content: content, sourceAtoms: hits)

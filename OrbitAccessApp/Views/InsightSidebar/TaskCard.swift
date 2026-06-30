@@ -55,14 +55,14 @@ struct TaskCard: View {
             }
             .buttonStyle(OrbitFlatButtonStyle(variant: .primary))
             .disabled(!model.canUseLiveServices)
-            .help(model.canUseLiveServices ? "Approve task" : "Start daemon to approve")
+            .help(model.canUseLiveServices ? "Approve task" : "Orbit must be online to approve")
 
             Button("Skip") {
                 skipTask()
             }
             .buttonStyle(OrbitFlatButtonStyle(variant: .secondary))
             .disabled(!model.canUseLiveServices)
-            .help(model.canUseLiveServices ? "Skip task" : "Start daemon to skip")
+            .help(model.canUseLiveServices ? "Skip task" : "Orbit must be online to skip")
 
             Spacer()
         }

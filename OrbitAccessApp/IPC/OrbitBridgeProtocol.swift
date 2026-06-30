@@ -33,7 +33,7 @@ enum OrbitBridgeError: LocalizedError {
         case .serverMessage(let message):
             return ChatErrorFormatter.relayRegistrationMessage(message)
         case .daemonOffline:
-            return "Orbit daemon is not running. Start it from the sidebar to chat with AI."
+            return "Orbit's background service is not responding. It starts automatically with the app — quit and reopen Orbit if this persists."
         }
     }
 }

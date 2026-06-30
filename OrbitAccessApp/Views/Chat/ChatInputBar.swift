@@ -89,6 +89,9 @@ struct ChatInputBar: View {
     }
 
     private var placeholderText: String {
+        if model.isDaemonStarting {
+            return "Orbit is starting…"
+        }
         if !model.canBrowseContext {
             return "Waiting for Orbit database…"
         }
@@ -102,9 +105,9 @@ struct ChatInputBar: View {
             return "Ask Orbit anything…"
         }
         if model.canSearchLocally {
-            return "Search your saved context (start daemon for AI answers)…"
+            return "Search your saved context (configure AI above for full answers)…"
         }
-        return "Start the Orbit daemon to chat…"
+        return "Orbit is starting…"
     }
 
     private var sendButton: some View {

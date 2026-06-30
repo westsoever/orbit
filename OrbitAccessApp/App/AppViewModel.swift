@@ -49,6 +49,12 @@ final class AppViewModel {
     @ObservationIgnored private let walWatcher = WALWatcher()
     @ObservationIgnored private var statusTimer: AnyCancellable?
     @ObservationIgnored private var hasPolledDaemonOnce = false
+    @ObservationIgnored private var didAutoStartDaemonOnLaunch = false
+
+    var isDaemonStarting: Bool {
+        if case .starting = daemonControlState { return true }
+        return false
+    }
 
     init() {
         daemonManager = DaemonManager(bridge: bridge)
@@ -87,6 +93,7 @@ final class AppViewModel {
         } catch {
             bootstrapFailure = .databaseUnavailable
         }
+        await ensureDaemonRunningOnLaunch()
         startStatusPolling()
         taskStore.startPolling(bridge: bridge) { [weak self] in
             self?.canUseLiveServices ?? false
@@ -114,11 +121,11 @@ final class AppViewModel {
     }
 
     @MainActor
-    func startDaemon() async {
+    func startDaemon(notifyOnSuccess: Bool = true) async {
         do {
             try await daemonManager.start()
             daemonControlState = daemonManager.controlState
-            await pollDaemonStatus(notifyIfOnline: true)
+            await pollDaemonStatus(notifyIfOnline: notifyOnSuccess)
         } catch {
             daemonControlState = daemonManager.controlState
         }
@@ -173,6 +180,21 @@ final class AppViewModel {
         }
 
         hasPolledDaemonOnce = true
+    }
+
+    @MainActor
+    private func ensureDaemonRunningOnLaunch() async {
+        guard !didAutoStartDaemonOnLaunch else { return }
+        didAutoStartDaemonOnLaunch = true
+
+        if await bridge.checkStatus() {
+            isDaemonOnline = true
+            isCaptureActive = bridge.captureActive
+            daemonControlState = .running
+            return
+        }
+
+        await startDaemon(notifyOnSuccess: false)
     }
 
     private func startWALWatcher() {

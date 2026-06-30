@@ -94,6 +94,9 @@ struct MainChatView: View {
     }
 
     private var chatStatusText: String? {
+        if model.isDaemonStarting {
+            return "Orbit is starting in the background…"
+        }
         if model.canUseAIChat {
             if let mode = model.aiMode {
                 switch mode {
@@ -112,7 +115,12 @@ struct MainChatView: View {
             return nil
         }
         if model.canSearchLocally {
-            return "Offline mode — keyword search over saved context. Start the daemon for AI answers."
+            if model.isDaemonStarting {
+                return "Orbit is starting — keyword search available from saved context."
+            }
+            if !model.canUseLiveServices {
+                return "Browse-only mode — keyword search over saved context. Configure AI above for full answers."
+            }
         }
         return nil
     }

@@ -58,18 +58,18 @@ enum ChatErrorFormatter {
 
     static func noChatAvailable(hasDatabase: Bool, hasDaemon: Bool) -> String {
         if !hasDatabase && !hasDaemon {
-            return "Chat is unavailable. Start the Orbit daemon from the sidebar and wait for the local database to load."
+            return "Chat is unavailable while Orbit is still starting. Wait a moment for the database and background service to load."
         }
         if !hasDatabase {
             return "Chat is unavailable because the Orbit database is not ready yet. Retry from the notification in the bottom-left corner."
         }
-        return "Chat is unavailable because the Orbit daemon is not running. Click Start in the sidebar to enable AI answers."
+        return "Chat is unavailable because Orbit's background service is not responding. Quit and reopen the app, or use Retry in the sidebar."
     }
 
     private static func message(for error: OrbitBridgeError) -> String {
         switch error {
         case .invalidResponse:
-            return "Orbit returned an unexpected response. Try restarting the daemon from the sidebar."
+            return "Orbit returned an unexpected response. Quit and reopen the app to restart the background service."
         case .httpStatus(let code):
             switch code {
             case 503:
@@ -77,23 +77,23 @@ enum ChatErrorFormatter {
             case 502, 504:
                 return "Orbit timed out while generating an answer. Try a shorter question or check your AI provider."
             default:
-                return "Orbit daemon returned an error (HTTP \(code)). Try restarting the daemon."
+                return "Orbit returned an error (HTTP \(code)). Quit and reopen the app if this keeps happening."
             }
         case .serverMessage(let message):
             return friendlyServerMessage(message) ?? message
         case .daemonOffline:
-            return "Orbit daemon is not running. Start it from the sidebar to chat with AI."
+            return "Orbit's background service is not responding. It starts automatically with the app — quit and reopen Orbit if this persists."
         }
     }
 
     private static func message(for error: URLError) -> String {
         switch error.code {
         case .cannotConnectToHost, .cannotFindHost, .networkConnectionLost:
-            return "Cannot reach the Orbit daemon on this Mac. Start it from the sidebar (port 8765)."
+            return "Cannot reach Orbit's background service yet. It should start automatically when you open the app — wait a moment and try again."
         case .timedOut:
             return "Orbit took too long to respond. The daemon may be busy — try again."
         case .notConnectedToInternet:
-            return "Network error while talking to Orbit. Check that the daemon is running locally."
+            return "Network error while talking to Orbit. The background service should be running on this Mac."
         default:
             return "Connection to Orbit failed: \(error.localizedDescription)"
         }
