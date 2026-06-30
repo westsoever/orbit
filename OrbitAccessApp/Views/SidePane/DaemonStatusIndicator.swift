@@ -17,8 +17,12 @@ struct DaemonStatusIndicator: View {
                     Text("Could not load ~/.orbit/orbit.db")
                         .font(.caption2)
                         .foregroundStyle(Color.orbitSecondaryText(for: colorScheme))
+                } else if model.isDaemonStarting {
+                    Text("Orbit is starting in the background…")
+                        .font(.caption2)
+                        .foregroundStyle(Color.orbitSecondaryText(for: colorScheme))
                 } else if model.canBrowseContext && !model.canUseLiveServices && !isTransitioning {
-                    Text("Browsing saved context — start daemon for capture & AI")
+                    Text("Browsing saved context — background capture paused")
                         .font(.caption2)
                         .foregroundStyle(Color.orbitSecondaryText(for: colorScheme))
                 }
@@ -81,7 +85,7 @@ struct DaemonStatusIndicator: View {
             }
             .buttonStyle(OrbitFlatButtonStyle(variant: .secondary))
         } else {
-            Button("Start") {
+            Button("Retry") {
                 Task { await model.startDaemon() }
             }
             .buttonStyle(OrbitFlatButtonStyle(variant: .primary))

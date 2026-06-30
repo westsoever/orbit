@@ -31,23 +31,34 @@ final class ChatStore {
     }
 
     @MainActor
-    func send(canUseAIChat: Bool, canSearchLocally: Bool) async {
+    func send(canUseLiveServices: Bool, canSearchLocally: Bool, hasDatabase: Bool) async {
         let query = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return }
 
-        if canUseAIChat, let bridge {
-            await send(bridge: bridge)
+        if canUseLiveServices, let bridge {
+            await sendViaBridge(
+                bridge: bridge,
+                query: query,
+                fallbackOffline: canSearchLocally,
+                dbReader: dbReader
+            )
         } else if canSearchLocally, let dbReader {
             await sendOffline(query: query, dbReader: dbReader)
         } else {
-            errorMessage = "Start Orbit to enable chat — no AI service and no local database are available yet."
+            errorMessage = ChatErrorFormatter.noChatAvailable(
+                hasDatabase: hasDatabase,
+                hasDaemon: canUseLiveServices
+            )
         }
     }
 
     @MainActor
-    func send(bridge: OrbitBridgeProtocol) async {
-        let query = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return }
+    private func sendViaBridge(
+        bridge: OrbitBridgeProtocol,
+        query: String,
+        fallbackOffline: Bool,
+        dbReader: OrbitDBReader?
+    ) async {
         errorMessage = nil
         inputText = ""
         messages.append(ChatMessage(role: .user, content: query))
@@ -55,6 +66,7 @@ final class ChatStore {
         var assistant = ChatMessage(role: .assistant, content: "")
         messages.append(assistant)
         let assistantID = assistant.id
+
         do {
             for try await chunk in bridge.chatStream(query) {
                 switch chunk.kind {
@@ -68,29 +80,57 @@ final class ChatStore {
                     break
                 }
             }
+            if assistant.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                removeMessage(id: assistantID)
+                errorMessage = "Orbit did not return an answer. Check your AI setup and try again."
+            }
         } catch {
-            errorMessage = error.localizedDescription
+            removeMessage(id: assistantID)
+            if fallbackOffline, let dbReader, ChatErrorFormatter.isMissingCredentials(error) {
+                await sendOffline(
+                    query: query,
+                    dbReader: dbReader,
+                    includeUserMessage: false,
+                    preamble: "AI is not configured yet — showing keyword matches from your saved context instead."
+                )
+            } else {
+                errorMessage = ChatErrorFormatter.userMessage(for: error)
+            }
         }
         isStreaming = false
     }
 
     @MainActor
-    private func sendOffline(query: String, dbReader: OrbitDBReader) async {
+    private func sendOffline(
+        query: String,
+        dbReader: OrbitDBReader,
+        includeUserMessage: Bool = true,
+        preamble: String? = nil
+    ) async {
         errorMessage = nil
-        inputText = ""
-        messages.append(ChatMessage(role: .user, content: query))
+        if includeUserMessage {
+            inputText = ""
+            messages.append(ChatMessage(role: .user, content: query))
+        }
         isStreaming = true
 
-        let hits = (try? dbReader.lexicalSearch(query, limit: 8)) ?? []
-        let body: String
-        if hits.isEmpty {
-            body = "No matching context found in your local history. Start the daemon to capture new activity or try different keywords."
-        } else {
-            body = formatOfflineContext(hits)
-                + "\n\n_(Offline mode — keyword matches only. Start the daemon for AI answers.)_"
+        let hits: [SearchHit]
+        do {
+            hits = try dbReader.lexicalSearch(query, limit: 8)
+        } catch {
+            hits = []
+            errorMessage = "Could not search your saved context: \(ChatErrorFormatter.userMessage(for: error))"
         }
 
-        var assistant = ChatMessage(role: .assistant, content: body, sourceAtoms: hits)
+        let body: String
+        if hits.isEmpty {
+            body = "No matching context found in your local history. Capture new activity by using your Mac as usual, or try different keywords."
+        } else {
+            body = formatOfflineContext(hits)
+                + "\n\n_(Keyword matches only. Configure Cloud AI or a local Ollama model above for full answers.)_"
+        }
+        let content = [preamble, body].compactMap { $0 }.joined(separator: "\n\n")
+        let assistant = ChatMessage(role: .assistant, content: content, sourceAtoms: hits)
         messages.append(assistant)
         isStreaming = false
     }
@@ -105,5 +145,9 @@ final class ChatStore {
     private func replaceMessage(id: UUID, with message: ChatMessage) {
         guard let index = messages.firstIndex(where: { $0.id == id }) else { return }
         messages[index] = message
+    }
+
+    private func removeMessage(id: UUID) {
+        messages.removeAll { $0.id == id }
     }
 }

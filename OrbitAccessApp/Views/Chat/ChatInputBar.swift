@@ -89,16 +89,25 @@ struct ChatInputBar: View {
     }
 
     private var placeholderText: String {
+        if model.isDaemonStarting {
+            return "Orbit is starting…"
+        }
         if !model.canBrowseContext {
             return "Waiting for Orbit database…"
         }
         if model.canUseAIChat {
+            if model.aiMode == .local, let name = model.localModelName {
+                return "Ask Orbit anything… (local: \(name))"
+            }
+            if model.aiMode == .cloud {
+                return "Ask Orbit anything… (Cloud AI)"
+            }
             return "Ask Orbit anything…"
         }
-        if model.canUseLiveServices && model.shouldShowCloudAIEnablePrompt {
-            return "Enable Cloud AI above, or search saved context…"
+        if model.canSearchLocally {
+            return "Search your saved context (configure AI above for full answers)…"
         }
-        return "Search your context (offline — start daemon for AI answers)…"
+        return "Orbit is starting…"
     }
 
     private var sendButton: some View {
@@ -119,7 +128,14 @@ struct ChatInputBar: View {
     }
 
     private var sendHelp: String {
-        model.canUseAIChat ? "Send message" : "Search saved context"
+        if model.canUseAIChat {
+            switch model.aiMode {
+            case .cloud: return "Send message via Cloud AI"
+            case .local: return "Send message via local Ollama model"
+            case nil: return "Send message (AI or keyword fallback)"
+            }
+        }
+        return "Search saved context"
     }
 
     private var spinOffButton: some View {
@@ -142,15 +158,16 @@ struct ChatInputBar: View {
     private var canSend: Bool {
         !model.chatStore.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !model.chatStore.isStreaming
-            && (model.canUseAIChat || model.canSearchLocally)
+            && (model.canUseLiveServices || model.canSearchLocally)
     }
 
     private func sendMessage() {
         guard canSend else { return }
         Task {
             await model.chatStore.send(
-                canUseAIChat: model.canUseAIChat,
-                canSearchLocally: model.canSearchLocally
+                canUseLiveServices: model.canUseLiveServices,
+                canSearchLocally: model.canSearchLocally,
+                hasDatabase: model.canBrowseContext
             )
         }
     }

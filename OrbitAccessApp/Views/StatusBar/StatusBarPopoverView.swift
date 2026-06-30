@@ -50,14 +50,18 @@ struct StatusBarPopoverView: View {
                         ProgressView()
                             .controlSize(.small)
                             .frame(maxWidth: .infinity)
+                    } else if model.isDaemonStarting {
+                        ProgressView()
+                            .controlSize(.small)
+                            .frame(maxWidth: .infinity)
                     } else if model.isDaemonOnline {
-                        Button("Stop daemon") {
+                        Button("Stop") {
                             Task { await model.stopDaemon() }
                         }
                         .buttonStyle(OrbitFlatButtonStyle(variant: .secondary))
                         .frame(maxWidth: .infinity)
                     } else {
-                        Button("Start daemon") {
+                        Button("Retry") {
                             Task { await model.startDaemon() }
                         }
                         .buttonStyle(OrbitFlatButtonStyle(variant: .primary))
