@@ -39,19 +39,51 @@ final class OrbitDBReader: @unchecked Sendable {
         return try pool.read(block)
     }
 
-    func fetchRecentCaptures(afterId: Int64, limit: Int = 10) throws -> [ContextEvent] {
+    func fetchRecentNotes(afterId: Int64, limit: Int = 10) throws -> [SearchHit] {
         try read { db in
-            try ContextEvent
-                .filter(Column("id") > afterId)
-                .order(Column("id").desc)
-                .limit(limit)
-                .fetchAll(db)
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT
+                    a.id AS atom_id,
+                    a.event_id AS event_id,
+                    e.app_bundle_id AS app_bundle_id,
+                    e.app_name AS app_name,
+                    e.window_title AS window_title,
+                    e.timestamp AS timestamp,
+                    a.role AS role,
+                    a.label AS label,
+                    a.text AS snippet_html,
+                    0.0 AS score
+                FROM text_atoms a
+                JOIN context_events e ON e.id = a.event_id
+                WHERE a.id > ? AND length(trim(a.text)) > 10
+                ORDER BY a.id DESC
+                LIMIT ?
+                """, arguments: [afterId, limit])
+            return rows.map { Self.searchHit(from: $0) }
         }
     }
 
-    func fetchRecentCapturesTail(limit: Int = 10) throws -> [ContextEvent] {
+    func fetchRecentNotesTail(limit: Int = 10) throws -> [SearchHit] {
         try read { db in
-            try ContextEvent.order(Column("id").desc).limit(limit).fetchAll(db)
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT
+                    a.id AS atom_id,
+                    a.event_id AS event_id,
+                    e.app_bundle_id AS app_bundle_id,
+                    e.app_name AS app_name,
+                    e.window_title AS window_title,
+                    e.timestamp AS timestamp,
+                    a.role AS role,
+                    a.label AS label,
+                    a.text AS snippet_html,
+                    0.0 AS score
+                FROM text_atoms a
+                JOIN context_events e ON e.id = a.event_id
+                WHERE length(trim(a.text)) > 10
+                ORDER BY a.id DESC
+                LIMIT ?
+                """, arguments: [limit])
+            return rows.map { Self.searchHit(from: $0) }
         }
     }
 

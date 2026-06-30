@@ -20,8 +20,8 @@ struct InsightSidebarView: View {
                 SectionHeader(title: "Routines")
                 RoutineList(routines: model.insightStore.routines)
 
-                SectionHeader(title: "Context Stream")
-                RecentCaptureList(events: model.insightStore.recentCaptures)
+                SectionHeader(title: "Recent Notes")
+                RecentNotesList(notes: model.insightStore.recentNotes)
             }
             .padding(.horizontal, 12)
             .padding(.top, 16)

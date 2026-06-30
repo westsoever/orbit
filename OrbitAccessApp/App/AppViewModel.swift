@@ -70,7 +70,7 @@ final class AppViewModel {
             bootstrapFailure = nil
             isDatabaseReady = true
             insightStore.refreshAggregates()
-            insightStore.refreshRecentCaptures(incremental: false)
+            insightStore.refreshRecentNotes(incremental: false)
             startWALWatcher()
         } catch let error as OrbitDBError {
             bootstrapFailure = error
@@ -92,7 +92,7 @@ final class AppViewModel {
             bootstrapFailure = nil
             isDatabaseReady = true
             insightStore.refreshAggregates()
-            insightStore.refreshRecentCaptures(incremental: false)
+            insightStore.refreshRecentNotes(incremental: false)
             startWALWatcher()
         } catch let error as OrbitDBError {
             bootstrapFailure = error
@@ -169,7 +169,7 @@ final class AppViewModel {
         guard let walURL = dbReader.walURL() else { return }
         walWatcher.start(walURL: walURL) { [weak self] in
             Task { @MainActor in
-                self?.insightStore.refreshRecentCaptures(incremental: true)
+                self?.insightStore.refreshRecentNotes(incremental: true)
                 self?.insightStore.refreshAggregates()
             }
         }
