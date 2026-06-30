@@ -48,45 +48,53 @@ final class OrbitDBReader: @unchecked Sendable {
         return try pool.read(block)
     }
 
-    func fetchRecentCaptures(afterId: Int64, limit: Int = 10) throws -> [ContextEvent] {
-        let filter = userEventFilter(column: "user_id")
+    func fetchRecentNotes(afterId: Int64, limit: Int = 10) throws -> [SearchHit] {
+        let filter = userEventFilter()
         return try read { db in
-            if filter.sql.isEmpty {
-                return try ContextEvent
-                    .filter(Column("id") > afterId)
-                    .order(Column("id").desc)
-                    .limit(limit)
-                    .fetchAll(db)
-            }
-            return try ContextEvent.fetchAll(
-                db,
-                sql: """
-                SELECT * FROM context_events
-                WHERE id > ?\(filter.sql)
-                ORDER BY id DESC
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT
+                    a.id AS atom_id,
+                    a.event_id AS event_id,
+                    e.app_bundle_id AS app_bundle_id,
+                    e.app_name AS app_name,
+                    e.window_title AS window_title,
+                    e.timestamp AS timestamp,
+                    a.role AS role,
+                    a.label AS label,
+                    a.text AS snippet_html,
+                    0.0 AS score
+                FROM text_atoms a
+                JOIN context_events e ON e.id = a.event_id
+                WHERE a.id > ? AND length(trim(a.text)) > 10\(filter.sql)
+                ORDER BY a.id DESC
                 LIMIT ?
-                """,
-                arguments: [afterId] + filter.arguments + [limit]
-            )
+                """, arguments: [afterId] + filter.arguments + [limit])
+            return rows.map { Self.searchHit(from: $0) }
         }
     }
 
-    func fetchRecentCapturesTail(limit: Int = 10) throws -> [ContextEvent] {
-        let filter = userEventFilter(column: "user_id")
+    func fetchRecentNotesTail(limit: Int = 10) throws -> [SearchHit] {
+        let filter = userEventFilter()
         return try read { db in
-            if filter.sql.isEmpty {
-                return try ContextEvent.order(Column("id").desc).limit(limit).fetchAll(db)
-            }
-            return try ContextEvent.fetchAll(
-                db,
-                sql: """
-                SELECT * FROM context_events
-                WHERE 1=1\(filter.sql)
-                ORDER BY id DESC
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT
+                    a.id AS atom_id,
+                    a.event_id AS event_id,
+                    e.app_bundle_id AS app_bundle_id,
+                    e.app_name AS app_name,
+                    e.window_title AS window_title,
+                    e.timestamp AS timestamp,
+                    a.role AS role,
+                    a.label AS label,
+                    a.text AS snippet_html,
+                    0.0 AS score
+                FROM text_atoms a
+                JOIN context_events e ON e.id = a.event_id
+                WHERE length(trim(a.text)) > 10\(filter.sql)
+                ORDER BY a.id DESC
                 LIMIT ?
-                """,
-                arguments: filter.arguments + [limit]
-            )
+                """, arguments: filter.arguments + [limit])
+            return rows.map { Self.searchHit(from: $0) }
         }
     }
 

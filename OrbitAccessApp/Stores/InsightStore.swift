@@ -10,12 +10,12 @@ final class InsightStore {
     var calendarEvents: [CalendarEvent] = []
     var isCalendarConnected = false
     var routines: [RoutineBlock] = []
-    var recentCaptures: [ContextEvent] = []
+    var recentNotes: [SearchHit] = []
     var atomsCapturedToday = 0
 
     @ObservationIgnored private var aggregateTimer: AnyCancellable?
     @ObservationIgnored private var dbReader: OrbitDBReader?
-    @ObservationIgnored private var lastSeenEventId: Int64 = 0
+    @ObservationIgnored private var lastSeenAtomId: Int64 = 0
     @ObservationIgnored private let calendarProvider: any CalendarScheduleProvider = DisconnectedCalendarProvider()
 
     func configure(dbReader: OrbitDBReader) {
@@ -54,17 +54,17 @@ final class InsightStore {
         refreshAggregates()
     }
 
-    func refreshRecentCaptures(incremental: Bool) {
+    func refreshRecentNotes(incremental: Bool) {
         guard let dbReader, dbReader.isReady else { return }
-        if incremental, lastSeenEventId > 0 {
-            let newEvents = (try? dbReader.fetchRecentCaptures(afterId: lastSeenEventId)) ?? []
-            if !newEvents.isEmpty {
-                recentCaptures = Array((newEvents + recentCaptures).prefix(10))
-                lastSeenEventId = recentCaptures.map(\.id).max() ?? lastSeenEventId
+        if incremental, lastSeenAtomId > 0 {
+            let newNotes = (try? dbReader.fetchRecentNotes(afterId: lastSeenAtomId)) ?? []
+            if !newNotes.isEmpty {
+                recentNotes = Array((newNotes + recentNotes).prefix(10))
+                lastSeenAtomId = Int64(recentNotes.map(\.atomId).max() ?? Int(lastSeenAtomId))
             }
             return
         }
-        recentCaptures = (try? dbReader.fetchRecentCapturesTail()) ?? []
-        lastSeenEventId = recentCaptures.map(\.id).max() ?? 0
+        recentNotes = (try? dbReader.fetchRecentNotesTail()) ?? []
+        lastSeenAtomId = Int64(recentNotes.map(\.atomId).max() ?? 0)
     }
 }

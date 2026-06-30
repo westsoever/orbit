@@ -35,9 +35,8 @@ struct MainChatView: View {
                     CloudAIEnableCard()
                 }
                 ChatInputBar(showSpinOff: true, isCompact: false)
-                if model.canBrowseContext && !model.canUseAIChat {
-                    offlineModeBadge
-                }
+                chatStatusBadge
+                chatErrorBanner
             }
             .padding(.horizontal, 24)
             Spacer()
@@ -51,10 +50,7 @@ struct MainChatView: View {
             ChatMessageList(messages: model.chatStore.messages, isStreaming: model.chatStore.isStreaming)
 
             if let errorMessage = model.chatStore.errorMessage {
-                Text(errorMessage)
-                    .font(.caption)
-                    .foregroundStyle(.red)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                chatErrorBannerContent(errorMessage)
                     .padding(.horizontal, 22)
             }
 
@@ -66,18 +62,66 @@ struct MainChatView: View {
                     .padding(.horizontal, 16)
             }
 
-            if model.canBrowseContext && !model.canUseAIChat {
-                offlineModeBadge
-                    .padding(.horizontal, 16)
-            }
+            chatStatusBadge
+                .padding(.horizontal, 16)
         }
         .padding(.bottom, 12)
     }
 
-    private var offlineModeBadge: some View {
-        Text("Offline mode — keyword search over saved context")
-            .font(.caption2)
-            .foregroundStyle(Color.orbitSecondaryText(for: colorScheme))
+    private var chatStatusBadge: some View {
+        Group {
+            if let text = chatStatusText {
+                Text(text)
+                    .font(.caption2)
+                    .foregroundStyle(Color.orbitSecondaryText(for: colorScheme))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var chatErrorBanner: some View {
+        if let errorMessage = model.chatStore.errorMessage {
+            chatErrorBannerContent(errorMessage)
+        }
+    }
+
+    private func chatErrorBannerContent(_ message: String) -> some View {
+        Text(message)
+            .font(.caption)
+            .foregroundStyle(.red)
             .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var chatStatusText: String? {
+        if model.isDaemonStarting {
+            return "Orbit is starting in the background…"
+        }
+        if model.canUseAIChat {
+            if let mode = model.aiMode {
+                switch mode {
+                case .cloud:
+                    return "Cloud AI is enabled."
+                case .local:
+                    if let name = model.localModelName {
+                        return "Local Ollama model: \(name)."
+                    }
+                    return "Local Ollama model is configured."
+                }
+            }
+            if model.cloudAI.hasBYOK() {
+                return "Using your API key from ~/.orbit/.env."
+            }
+            return nil
+        }
+        if model.canSearchLocally {
+            if model.isDaemonStarting {
+                return "Orbit is starting — keyword search available from saved context."
+            }
+            if !model.canUseLiveServices {
+                return "Browse-only mode — keyword search over saved context. Configure AI above for full answers."
+            }
+        }
+        return nil
     }
 }

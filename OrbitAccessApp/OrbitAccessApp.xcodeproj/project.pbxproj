@@ -10,6 +10,7 @@
 		045F0C59499B05440F6BC3C7 /* SidebaneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB89A61F5402F0154D149D7B /* SidebaneView.swift */; };
 		A1C8E4F92B3D5E7A90123456 /* CalendarEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2D9F5A03C4E6F8B01234567 /* CalendarEvent.swift */; };
 		C3E0A6B14D5F7A9C12345678 /* CalendarScheduleProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4F1B7C25E6A8B0D23456789 /* CalendarScheduleProvider.swift */; };
+		D5E6F7A8B9C0123456789012 /* LLMPreferencesService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6F7A8B9C0D1234567890123 /* LLMPreferencesService.swift */; };
 		0A99DA81141740971E627C55 /* ChatInputBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49FF6FDA9DF742429C1BD00A /* ChatInputBar.swift */; };
 		A3B7C9E1F20486182A4B6C8D /* ChatHeroView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4C8D0E2F30517293B5C7D9E /* ChatHeroView.swift */; };
 		C5D9E1F3041527364A8B0C2E /* ChatIntegrationsStrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6E0F214152637485B9C1D3F /* ChatIntegrationsStrip.swift */; };
@@ -23,7 +24,7 @@
 		31E17588732283DD9D13A1B4 /* AIFunctionProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC9666AD424EA33A0FBEC31E /* AIFunctionProtocol.swift */; };
 		327C7A20EECCD098097BC604 /* SectionHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC88DFFD58EC639E25DD4A4D /* SectionHeader.swift */; };
 		32B1CAA1AFB065ED53A10F7A /* TaskLogEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8354BD0C7FB5924891BB5FC8 /* TaskLogEntry.swift */; };
-		3E1125E88AB837160A092713 /* RecentCaptureList.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7C26D4BEDAEC625174D12AA /* RecentCaptureList.swift */; };
+		3E1125E88AB837160A092713 /* RecentNotesList.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7C26D4BEDAEC625174D12AA /* RecentNotesList.swift */; };
 		43D19435B96849EC39265BC8 /* OrbitBridgeClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6FF3B246A8AC2EB41EAEF84 /* OrbitBridgeClient.swift */; };
 		449CBDDF234DA76BA70E05E0 /* StatusBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3E44C7AC6A83F9C5AA1E2C1 /* StatusBarController.swift */; };
 		47548C287792F5B37B3AC576 /* AIFunctionRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7AC1B072E6201269640D08D /* AIFunctionRegistry.swift */; };
@@ -58,6 +59,7 @@
 		C038811F8590AF86F466F280 /* Double+Rounding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13299A065F41CDA07DB28A2D /* Double+Rounding.swift */; };
 		C24E69033BEB28172CFF5F60 /* StatusBarPopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC0FDBE7156736393196635A /* StatusBarPopoverView.swift */; };
 		C628FDA29B5B1E4FB7F81A88 /* AppViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECB781D7F5211047FB2C631D /* AppViewModel.swift */; };
+		A1B2C3D4E5F6789012345678 /* ChatErrorFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F678901234567890 /* ChatErrorFormatter.swift */; };
 		C7E8F912A3B4567890D1E2F03 /* AgentsDropdownMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8F9A023B4C5678901E2F314 /* AgentsDropdownMenu.swift */; };
 		CD5666CFC3371BFCFDA6E68B /* MainChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DFB6A679AF6CD3F323A2061 /* MainChatView.swift */; };
 		CEE53E4794AEA52F46439B4F /* Color+Orbit.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF6F9EB75967C33AEA74527A /* Color+Orbit.swift */; };
@@ -117,6 +119,7 @@
 		75532D1DCAEEF6B15E06A796 /* CalendarScheduleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarScheduleView.swift; sourceTree = "<group>"; };
 		B2D9F5A03C4E6F8B01234567 /* CalendarEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarEvent.swift; sourceTree = "<group>"; };
 		D4F1B7C25E6A8B0D23456789 /* CalendarScheduleProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarScheduleProvider.swift; sourceTree = "<group>"; };
+		E6F7A8B9C0D1234567890123 /* LLMPreferencesService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMPreferencesService.swift; sourceTree = "<group>"; };
 		795D208823295FF5D6C450C5 /* AgentType+UI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AgentType+UI.swift"; sourceTree = "<group>"; };
 		79CDC571226E7FF34600B9D8 /* FindByAppFunction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FindByAppFunction.swift; sourceTree = "<group>"; };
 		7E734B34E2F6CFEBA045A827 /* InsightSidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightSidebarView.swift; sourceTree = "<group>"; };
@@ -128,8 +131,9 @@
 		A96795CFAC996804AC2687A7 /* ProductivityScore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductivityScore.swift; sourceTree = "<group>"; };
 		AEB5DC30E713A61921379737 /* AgentPromptFunction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentPromptFunction.swift; sourceTree = "<group>"; };
 		B755775983DAE2555239D582 /* RoutineList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutineList.swift; sourceTree = "<group>"; };
-		B7C26D4BEDAEC625174D12AA /* RecentCaptureList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentCaptureList.swift; sourceTree = "<group>"; };
+		B7C26D4BEDAEC625174D12AA /* RecentNotesList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentNotesList.swift; sourceTree = "<group>"; };
 		BF6F9EB75967C33AEA74527A /* Color+Orbit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Orbit.swift"; sourceTree = "<group>"; };
+		B2C3D4E5F678901234567890 /* ChatErrorFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatErrorFormatter.swift; sourceTree = "<group>"; };
 		C6FF3B246A8AC2EB41EAEF84 /* OrbitBridgeClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrbitBridgeClient.swift; sourceTree = "<group>"; };
 		CC9666AD424EA33A0FBEC31E /* AIFunctionProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIFunctionProtocol.swift; sourceTree = "<group>"; };
 		CFA44E7200DD3A74F9053B81 /* SearchStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchStore.swift; sourceTree = "<group>"; };
@@ -165,6 +169,7 @@
 		200A83A3EEB1F87844B94DA5 /* Extensions */ = {
 			isa = PBXGroup;
 			children = (
+				B2C3D4E5F678901234567890 /* ChatErrorFormatter.swift */,
 				BF6F9EB75967C33AEA74527A /* Color+Orbit.swift */,
 				34C7D4A6DBDA6BB2810C8B0C /* Date+Formatting.swift */,
 				13299A065F41CDA07DB28A2D /* Double+Rounding.swift */,
@@ -190,7 +195,7 @@
 				75532D1DCAEEF6B15E06A796 /* CalendarScheduleView.swift */,
 				7E734B34E2F6CFEBA045A827 /* InsightSidebarView.swift */,
 				613D4346B5CE07D6DFCEC324 /* ProductivityScoreGauge.swift */,
-				B7C26D4BEDAEC625174D12AA /* RecentCaptureList.swift */,
+				B7C26D4BEDAEC625174D12AA /* RecentNotesList.swift */,
 				B755775983DAE2555239D582 /* RoutineList.swift */,
 				6AF4267DCC4DB50AC3BEEC76 /* TaskCard.swift */,
 				5E2D7010E3CCA4DBF4BA7055 /* TaskCardList.swift */,
@@ -289,6 +294,7 @@
 			isa = PBXGroup;
 			children = (
 				D4F1B7C25E6A8B0D23456789 /* CalendarScheduleProvider.swift */,
+				E6F7A8B9C0D1234567890123 /* LLMPreferencesService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -456,6 +462,7 @@
 				E7F1A325263748596A0D2E4B /* ChatSuggestionChips.swift in Sources */,
 				8CF6E35CA2025899BEC418AE /* ChatMessageList.swift in Sources */,
 				861DAAB01A94393126AC9C33 /* ChatStore.swift in Sources */,
+				A1B2C3D4E5F6789012345678 /* ChatErrorFormatter.swift in Sources */,
 				CEE53E4794AEA52F46439B4F /* Color+Orbit.swift in Sources */,
 				7BEF582CB165D8D1AF340054 /* ContextAtomDetailSheet.swift in Sources */,
 				72267634EE2CEEF5A8F158D8 /* ContextEvent.swift in Sources */,
@@ -464,6 +471,7 @@
 				10EC5A23D61FF205F024F4E5 /* CalendarScheduleView.swift in Sources */,
 				A1C8E4F92B3D5E7A90123456 /* CalendarEvent.swift in Sources */,
 				C3E0A6B14D5F7A9C12345678 /* CalendarScheduleProvider.swift in Sources */,
+				D5E6F7A8B9C0123456789012 /* LLMPreferencesService.swift in Sources */,
 				D5666A22BB019A8CE0157B40 /* Date+Formatting.swift in Sources */,
 				C038811F8590AF86F466F280 /* Double+Rounding.swift in Sources */,
 				607B689219A17D9AAD4469D5 /* FindByAppFunction.swift in Sources */,
@@ -483,7 +491,7 @@
 				F3A2B1C0D9E8F7A6B5C4D3E2 /* OrbitSchemaInitializer.swift in Sources */,
 				7E76B0531299C47A4FF8489E /* ProductivityScore.swift in Sources */,
 				88CEF3A1FE23D286E270D586 /* ProductivityScoreGauge.swift in Sources */,
-				3E1125E88AB837160A092713 /* RecentCaptureList.swift in Sources */,
+				3E1125E88AB837160A092713 /* RecentNotesList.swift in Sources */,
 				D6D292502F8BC0C36F903ED7 /* RoutineList.swift in Sources */,
 				BA36D7085516808B1B33D08E /* SearchHit.swift in Sources */,
 				4A8D9955606A8A718FFDDF37 /* SearchStore.swift in Sources */,

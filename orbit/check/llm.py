@@ -157,6 +157,16 @@ def format_completion_error(exc: Exception) -> str:
                     nested = body.get("detail")
                     error = nested.get("error") if isinstance(nested, dict) else None
                 if isinstance(error, str) and error:
+                    mapped = {
+                        "relay_disabled": "Cloud AI temporarily unavailable.",
+                        "upstream_unavailable": "The AI provider is temporarily unavailable. Try again in a few minutes.",
+                        "registration_limit_exceeded": (
+                            "Daily cloud AI limit reached. Try again tomorrow or add your own "
+                            f"API key in {_CONFIG}"
+                        ),
+                    }
+                    if error in mapped:
+                        return mapped[error]
                     return error
         except Exception:
             pass

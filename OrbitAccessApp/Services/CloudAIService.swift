@@ -82,17 +82,16 @@ final class CloudAIService: @unchecked Sendable {
             }
     }
 
+    func hasLocalLLMConfigured() -> Bool {
+        LLMPreferencesService.shared.isLocalConfigured()
+    }
+
     func hasLocalLLM() -> Bool {
-        let url = OrbitPaths.envFileURL
-        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return false }
-        return text.split(separator: "\n").contains { line in
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            return trimmed == "ORBIT_LLM_PROVIDER=local"
-        }
+        hasLocalLLMConfigured()
     }
 
     func shouldShowEnablePrompt(isDaemonOnline: Bool) -> Bool {
-        isDaemonOnline && !isEnabled() && !hasBYOK() && !hasLocalLLM()
+        isDaemonOnline && !isEnabled() && !hasBYOK() && !hasLocalLLMConfigured()
     }
 
     func register() async throws -> CloudAIConfig {
@@ -114,8 +113,8 @@ final class CloudAIService: @unchecked Sendable {
             throw CloudAIError.registrationFailed("Invalid response from relay.")
         }
         guard http.statusCode == 201 else {
-            let message = Self.errorMessage(from: data) ?? "HTTP \(http.statusCode)"
-            throw CloudAIError.registrationFailed(message)
+            let raw = Self.errorMessage(from: data) ?? "HTTP \(http.statusCode)"
+            throw CloudAIError.registrationFailed(ChatErrorFormatter.relayRegistrationMessage(raw))
         }
 
         let decoded = try JSONDecoder().decode(CloudRegisterResponse.self, from: data)
@@ -163,7 +162,7 @@ final class CloudAIService: @unchecked Sendable {
         ]
         let status = SecItemAdd(query as CFDictionary, nil)
         guard status == errSecSuccess else {
-            throw CloudAIError.persistenceFailed("Keychain save failed (\(status)).")
+            throw CloudAIError.persistenceFailed("Could not save your Cloud AI token to the Keychain. Check Keychain access for Orbit Access.")
         }
     }
 

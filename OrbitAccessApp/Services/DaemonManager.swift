@@ -17,13 +17,13 @@ enum DaemonManagerError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .orbitBinaryNotFound:
-            return "Could not find the orbit command. Activate the project venv or set ORBIT_ROOT."
-        case .startFailed(let status):
-            return "Failed to start Orbit daemon (exit \(status))."
-        case .stopFailed(let status):
-            return "Failed to stop Orbit daemon (exit \(status))."
+            return "Orbit could not find its background service. Reinstall the app or set ORBIT_ROOT for development builds."
+        case .startFailed:
+            return "Orbit could not start its background service. Quit and reopen the app, or check /tmp/orbit-daemon.log."
+        case .stopFailed:
+            return "Orbit could not stop its background service cleanly."
         case .startTimeout:
-            return "Orbit daemon did not come online in time."
+            return "Orbit's background service did not come online in time. Quit and reopen the app."
         }
     }
 }

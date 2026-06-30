@@ -25,7 +25,7 @@ struct SidebaneSearchPanel: View {
             if model.searchStore.isSearching {
                 LoadingIndicator()
             } else if model.searchStore.searchTier == .lexical, !model.canUseLiveServices, model.searchStore.panelActive {
-                Text("Keyword search (start daemon for semantic search).")
+                Text("Keyword search (semantic search when Orbit is fully online).")
                     .font(.caption2)
                     .foregroundStyle(Color.orbitSecondaryText(for: colorScheme))
             } else if let error = model.searchStore.lastError {
