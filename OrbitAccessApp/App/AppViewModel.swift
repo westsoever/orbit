@@ -27,9 +27,11 @@ final class AppViewModel {
     var canUseAIChat: Bool { canUseLiveServices }
 
     var hasConfiguredAI: Bool {
-        isCloudAIEnabled || cloudAI.hasBYOK() || cloudAI.hasLocalLLMConfigured()
+        aiMode != nil || cloudAI.hasBYOK()
     }
     var isCloudAIEnabled = false
+    var aiMode: AIMode?
+    var localModelName: String?
     var showCloudAISettings = false
     var bootstrapFailure: OrbitDBError?
     var daemonControlState: DaemonControlState = .offline
@@ -54,11 +56,17 @@ final class AppViewModel {
         taskStore.configure(bridge: bridge, dbReader: dbReader)
         searchStore.configure(bridge: bridge, dbReader: dbReader)
         insightStore.configure(dbReader: dbReader)
-        refreshCloudAIState()
+        refreshAIState()
+    }
+
+    func refreshAIState() {
+        isCloudAIEnabled = cloudAI.isEnabled()
+        aiMode = LLMPreferencesService.shared.currentMode()
+        localModelName = LLMPreferencesService.shared.localModelName()
     }
 
     func refreshCloudAIState() {
-        isCloudAIEnabled = cloudAI.isEnabled()
+        refreshAIState()
     }
 
     var shouldShowCloudAIEnablePrompt: Bool {

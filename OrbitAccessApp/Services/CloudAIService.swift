@@ -83,12 +83,7 @@ final class CloudAIService: @unchecked Sendable {
     }
 
     func hasLocalLLMConfigured() -> Bool {
-        let url = OrbitPaths.envFileURL
-        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return false }
-        return text.split(separator: "\n").contains { line in
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            return trimmed == "ORBIT_LLM_PROVIDER=local" || trimmed == "ORBIT_LLM_PROVIDER=auto"
-        }
+        LLMPreferencesService.shared.isLocalConfigured()
     }
 
     func hasLocalLLM() -> Bool {

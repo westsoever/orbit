@@ -95,16 +95,19 @@ struct MainChatView: View {
 
     private var chatStatusText: String? {
         if model.canUseAIChat {
-            if model.hasConfiguredAI {
-                if model.isCloudAIEnabled {
+            if let mode = model.aiMode {
+                switch mode {
+                case .cloud:
                     return "Cloud AI is enabled."
+                case .local:
+                    if let name = model.localModelName {
+                        return "Local Ollama model: \(name)."
+                    }
+                    return "Local Ollama model is configured."
                 }
-                if model.cloudAI.hasBYOK() {
-                    return "Using your API key from ~/.orbit/.env."
-                }
-                if model.cloudAI.hasLocalLLMConfigured() {
-                    return "Using a local model (Ollama)."
-                }
+            }
+            if model.cloudAI.hasBYOK() {
+                return "Using your API key from ~/.orbit/.env."
             }
             return nil
         }

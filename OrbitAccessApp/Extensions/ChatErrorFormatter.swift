@@ -12,6 +12,16 @@ enum ChatErrorFormatter {
         return friendlyServerMessage(text) ?? text
     }
 
+    static func aiSetupMessage(for error: Error) -> String {
+        if let preferencesError = error as? LLMPreferencesError {
+            return preferencesError.localizedDescription
+        }
+        if error is CloudAIError {
+            return cloudRegistrationMessage(for: error)
+        }
+        return userMessage(for: error)
+    }
+
     static func relayRegistrationMessage(_ raw: String) -> String {
         friendlyServerMessage(raw) ?? raw
     }

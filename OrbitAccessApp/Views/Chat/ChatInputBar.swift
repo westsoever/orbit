@@ -93,10 +93,13 @@ struct ChatInputBar: View {
             return "Waiting for Orbit database…"
         }
         if model.canUseAIChat {
-            if model.hasConfiguredAI {
-                return "Ask Orbit anything…"
+            if model.aiMode == .local, let name = model.localModelName {
+                return "Ask Orbit anything… (local: \(name))"
             }
-            return "Ask Orbit anything… (uses local Ollama if available)"
+            if model.aiMode == .cloud {
+                return "Ask Orbit anything… (Cloud AI)"
+            }
+            return "Ask Orbit anything…"
         }
         if model.canSearchLocally {
             return "Search your saved context (start daemon for AI answers)…"
@@ -123,7 +126,11 @@ struct ChatInputBar: View {
 
     private var sendHelp: String {
         if model.canUseAIChat {
-            return model.hasConfiguredAI ? "Send message to Orbit AI" : "Send message (AI or keyword fallback)"
+            switch model.aiMode {
+            case .cloud: return "Send message via Cloud AI"
+            case .local: return "Send message via local Ollama model"
+            case nil: return "Send message (AI or keyword fallback)"
+            }
         }
         return "Search saved context"
     }
