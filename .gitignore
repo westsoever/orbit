@@ -15,3 +15,8 @@ OrbitAccessApp/.tmp/
 build/
 .claude-flow/
 .DS_Store
+
+# Memtrace local graph index + runtime state (never commit)
+.memdb/
+.memtrace/
+.memtrace-workspace

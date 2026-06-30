@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "memtrace": {
+      "command": "memtrace",
+      "args": [
+        "mcp"
+      ],
+      "env": {
+        "MEMTRACE_WORKSPACE_ROOT": "${workspaceFolder}"
+      }
+    }
+  }
+}
