@@ -4,6 +4,8 @@ import sqlite3
 import threading
 from datetime import datetime, date, timezone
 
+from orbit.storage.session import get_active_user_id, require_active_user_id
+
 from .detector import Task
 
 
@@ -15,14 +17,21 @@ def migrate(con: sqlite3.Connection) -> None:
         pass  # already exists
 
 
+def _user_filter(user_id: str | None) -> tuple[str, list]:
+    if user_id:
+        return " AND user_id = ?", [user_id]
+    return "", []
+
+
 def insert_task(con: sqlite3.Connection, lock: threading.Lock, task: Task) -> int:
     ts = datetime.now(timezone.utc).isoformat()
+    user_id = require_active_user_id()
     with lock:
         cur = con.execute(
             "INSERT INTO task_log"
-            " (timestamp, title, description, original_prompt, agent_type, status)"
-            " VALUES (?, ?, ?, ?, ?, 'detected')",
-            (ts, task.title, task.description, task.suggested_prompt, task.agent_type),
+            " (user_id, timestamp, title, description, original_prompt, agent_type, status)"
+            " VALUES (?, ?, ?, ?, ?, ?, 'detected')",
+            (user_id, ts, task.title, task.description, task.suggested_prompt, task.agent_type),
         )
         return cur.lastrowid
 
@@ -50,16 +59,20 @@ def get_skipped_today(
     con: sqlite3.Connection,
     lock: threading.Lock,
     report_date: str | None = None,
+    user_id: str | None = None,
 ) -> list[tuple[int, Task]]:
     """Return (log_id, Task) pairs with status='skipped' from today."""
     d = report_date or date.today().isoformat()
+    uid = user_id if user_id is not None else get_active_user_id()
+    extra, params = _user_filter(uid)
     with lock:
         rows = con.execute(
             "SELECT id, title, description, original_prompt, agent_type"
             " FROM task_log"
             " WHERE status = 'skipped'"
-            "   AND date(timestamp) = ?",
-            (d,),
+            "   AND date(timestamp) = ?"
+            + extra,
+            [d, *params],
         ).fetchall()
     return [
         (row["id"], Task(
@@ -77,16 +90,20 @@ def get_pending_today(
     con: sqlite3.Connection,
     lock: threading.Lock,
     report_date: str | None = None,
+    user_id: str | None = None,
 ) -> list[tuple[int, Task]]:
     """Return (log_id, Task) pairs with status='detected' from today's date."""
     d = report_date or date.today().isoformat()
+    uid = user_id if user_id is not None else get_active_user_id()
+    extra, params = _user_filter(uid)
     with lock:
         rows = con.execute(
             "SELECT id, title, description, original_prompt, agent_type"
             " FROM task_log"
             " WHERE status = 'detected'"
-            "   AND date(timestamp) = ?",
-            (d,),
+            "   AND date(timestamp) = ?"
+            + extra,
+            [d, *params],
         ).fetchall()
     result = []
     for row in rows:

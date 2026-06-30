@@ -1,5 +1,19 @@
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  email TEXT NOT NULL UNIQUE,
+  display_name TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  cloud_user_id TEXT
+);
+
+CREATE TABLE IF NOT EXISTS user_sessions (
+  user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  last_active_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS context_events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL REFERENCES users(id),
   timestamp TEXT NOT NULL,
   app_bundle_id TEXT,
   app_name TEXT,
@@ -14,6 +28,8 @@ CREATE TABLE IF NOT EXISTS context_events (
 );
 CREATE INDEX IF NOT EXISTS idx_events_bundle_ts
   ON context_events(app_bundle_id, timestamp);
+CREATE INDEX IF NOT EXISTS idx_events_user_ts
+  ON context_events(user_id, timestamp);
 
 CREATE TABLE IF NOT EXISTS text_atoms (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -51,6 +67,7 @@ CREATE VIRTUAL TABLE IF NOT EXISTS vec_atoms USING vec0(
 
 CREATE TABLE IF NOT EXISTS task_log (
   id               INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id          TEXT NOT NULL REFERENCES users(id),
   timestamp        TEXT NOT NULL,
   title            TEXT,
   original_prompt  TEXT,
@@ -59,9 +76,11 @@ CREATE TABLE IF NOT EXISTS task_log (
   status           TEXT DEFAULT 'detected',
   exit_code        INTEGER
 );
+CREATE INDEX IF NOT EXISTS idx_task_log_user_ts ON task_log(user_id, timestamp);
 
 CREATE TABLE IF NOT EXISTS fs_events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL REFERENCES users(id),
   timestamp TEXT NOT NULL,
   path TEXT NOT NULL,
   event_type TEXT NOT NULL,
@@ -71,9 +90,11 @@ CREATE TABLE IF NOT EXISTS fs_events (
 );
 CREATE INDEX IF NOT EXISTS idx_fs_events_ts ON fs_events(timestamp);
 CREATE INDEX IF NOT EXISTS idx_fs_events_linked ON fs_events(linked_event_id);
+CREATE INDEX IF NOT EXISTS idx_fs_events_user_ts ON fs_events(user_id, timestamp);
 
 CREATE TABLE IF NOT EXISTS capture_audit (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL REFERENCES users(id),
   timestamp TEXT NOT NULL,
   capture_method TEXT NOT NULL,
   capture_tier INTEGER NOT NULL,
@@ -81,3 +102,4 @@ CREATE TABLE IF NOT EXISTS capture_audit (
   app_bundle_id TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_capture_audit_ts ON capture_audit(timestamp);
+CREATE INDEX IF NOT EXISTS idx_capture_audit_user_ts ON capture_audit(user_id, timestamp);

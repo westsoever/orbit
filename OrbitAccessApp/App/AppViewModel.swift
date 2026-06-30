@@ -9,6 +9,9 @@ final class AppViewModel {
     let taskStore = TaskStore()
     let searchStore = SearchStore()
     let insightStore = InsightStore()
+    let userSession = UserSessionService.shared
+
+    var isSignedIn: Bool { userSession.isSignedIn }
 
     var isDaemonOnline = false
     var isCaptureActive = false
@@ -81,6 +84,9 @@ final class AppViewModel {
 
     @MainActor
     func start() async {
+        userSession.reloadFromDisk()
+        guard isSignedIn else { return }
+
         do {
             try await dbReader.bootstrap()
             bootstrapFailure = nil
@@ -95,10 +101,29 @@ final class AppViewModel {
         }
         await ensureDaemonRunningOnLaunch()
         startStatusPolling()
+        await startDaemon()
         taskStore.startPolling(bridge: bridge) { [weak self] in
             self?.canUseLiveServices ?? false
         }
         insightStore.startAggregatePolling()
+    }
+
+    @MainActor
+    func completeSignUp() {
+        userSession.reloadFromDisk()
+        Task {
+            await start()
+        }
+    }
+
+    @MainActor
+    func signOut() async {
+        if isDaemonOnline {
+            await stopDaemon()
+        }
+        try? userSession.signOut()
+        isDatabaseReady = false
+        bootstrapFailure = nil
     }
 
     @MainActor

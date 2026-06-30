@@ -4,6 +4,8 @@ import json
 from datetime import datetime, timezone
 from typing import Any
 
+from orbit.storage.session import require_active_user_id
+
 
 def record_event(
     con: sqlite3.Connection,
@@ -11,15 +13,17 @@ def record_event(
     event_dict: dict[str, Any],
     atoms: list[dict[str, Any]],
 ) -> tuple[int, list[int]]:
+    user_id = require_active_user_id()
     with lock:
         con.execute("BEGIN IMMEDIATE")
         cur = con.execute(
             """INSERT INTO context_events
-               (timestamp, app_bundle_id, app_name, window_title,
+               (user_id, timestamp, app_bundle_id, app_name, window_title,
                 focused_element_role, focused_element_label, visible_text, raw_json,
                 capture_method, capture_tier, page_url)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
+                user_id,
                 event_dict.get("timestamp"),
                 event_dict.get("app_bundle_id"),
                 event_dict.get("app_name"),
@@ -51,9 +55,10 @@ def record_event(
             atom_ids.append(cur2.lastrowid)
         con.execute(
             """INSERT INTO capture_audit
-               (timestamp, capture_method, capture_tier, atom_count, app_bundle_id)
-               VALUES (?, ?, ?, ?, ?)""",
+               (user_id, timestamp, capture_method, capture_tier, atom_count, app_bundle_id)
+               VALUES (?, ?, ?, ?, ?, ?)""",
             (
+                user_id,
                 event_dict.get("timestamp") or datetime.now(timezone.utc).isoformat(),
                 event_dict.get("capture_method", "ax"),
                 event_dict.get("capture_tier", 1),

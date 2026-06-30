@@ -20,6 +20,7 @@ from orbit_relay.limits import (
 )
 from orbit_relay.openrouter import complete_chat
 from orbit_relay.store import (
+    DuplicateEmailError,
     DuplicateInstallError,
     RegistrationLimitError,
     RelayStore,
@@ -46,6 +47,30 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     content: str
+
+
+class AuthSignupRequest(BaseModel):
+    email: str = Field(..., min_length=3, max_length=320)
+    password: str = Field(..., min_length=8, max_length=256)
+    display_name: str = Field(..., min_length=1, max_length=128)
+
+
+class AuthLoginRequest(BaseModel):
+    email: str = Field(..., min_length=3, max_length=320)
+    password: str = Field(..., min_length=8, max_length=256)
+
+
+class AuthResponse(BaseModel):
+    user_id: str
+    session_token: str
+    expires_at: str
+
+
+def _parse_bearer(authorization: str | None) -> str | None:
+    if not authorization or not authorization.lower().startswith("bearer "):
+        return None
+    token = authorization[7:].strip()
+    return token or None
 
 
 def _client_ip(request: Request) -> str:
@@ -81,6 +106,42 @@ async def health() -> dict[str, bool]:
     return {"ok": True}
 
 
+@app.post("/v1/auth/signup", status_code=201, response_model=AuthResponse)
+async def auth_signup(
+    body: AuthSignupRequest,
+    settings: Annotated[Settings, Depends(get_settings)],
+    store: Annotated[RelayStore, Depends(get_store)],
+) -> AuthResponse:
+    if settings.relay_disabled:
+        raise HTTPException(status_code=503, detail={"error": "relay_disabled"})
+    email = body.email.strip().lower()
+    try:
+        user = store.create_user(email, body.password, body.display_name.strip())
+    except DuplicateEmailError:
+        raise HTTPException(status_code=409, detail={"error": "email_already_registered"})
+    token, expires_at = store.create_auth_session(
+        user.user_id, settings.orbit_relay_secret, settings.token_ttl_days
+    )
+    return AuthResponse(user_id=user.user_id, session_token=token, expires_at=expires_at)
+
+
+@app.post("/v1/auth/login", response_model=AuthResponse)
+async def auth_login(
+    body: AuthLoginRequest,
+    settings: Annotated[Settings, Depends(get_settings)],
+    store: Annotated[RelayStore, Depends(get_store)],
+) -> AuthResponse:
+    if settings.relay_disabled:
+        raise HTTPException(status_code=503, detail={"error": "relay_disabled"})
+    user = store.authenticate_user(body.email.strip().lower(), body.password)
+    if user is None:
+        raise HTTPException(status_code=401, detail={"error": "invalid_credentials"})
+    token, expires_at = store.create_auth_session(
+        user.user_id, settings.orbit_relay_secret, settings.token_ttl_days
+    )
+    return AuthResponse(user_id=user.user_id, session_token=token, expires_at=expires_at)
+
+
 @app.post("/v1/devices/register", status_code=201, response_model=RegisterResponse)
 async def register_device(
     body: RegisterRequest,
@@ -88,6 +149,7 @@ async def register_device(
     settings: Annotated[Settings, Depends(get_settings)],
     store: Annotated[RelayStore, Depends(get_store)],
     x_orbit_invite: Annotated[str | None, Header()] = None,
+    authorization: Annotated[str | None, Header()] = None,
 ) -> RegisterResponse:
     if settings.relay_disabled:
         raise HTTPException(status_code=503, detail={"error": "relay_disabled"})
@@ -96,6 +158,12 @@ async def register_device(
         raise HTTPException(status_code=403, detail={"error": "invalid_invite"})
 
     client_ip = _client_ip(request)
+    session_token = _parse_bearer(authorization)
+    user_id = (
+        store.resolve_auth_session(session_token, settings.orbit_relay_secret)
+        if session_token
+        else None
+    )
     try:
         token, expires_at = store.register_device(
             install_id=body.install_id,
@@ -103,6 +171,7 @@ async def register_device(
             token_ttl_days=settings.token_ttl_days,
             client_ip=client_ip,
             max_registrations_per_ip=settings.max_registrations_per_ip_per_day,
+            user_id=user_id,
         )
     except DuplicateInstallError:
         raise HTTPException(status_code=409, detail={"error": "install_id_already_registered"})

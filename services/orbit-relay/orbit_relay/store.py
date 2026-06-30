@@ -8,7 +8,12 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from orbit_relay.auth import generate_device_token, hash_token
+from orbit_relay.auth import (
+    generate_device_token,
+    hash_password,
+    hash_token,
+    verify_password,
+)
 
 
 @dataclass(frozen=True)
@@ -19,16 +24,40 @@ class DeviceRecord:
     created_at: str
     expires_at: str
     revoked: bool
+    user_id: str | None = None
+
+
+@dataclass(frozen=True)
+class UserRecord:
+    user_id: str
+    email: str
+    display_name: str
+    created_at: str
 
 
 _SCHEMA = """
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  email TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  display_name TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS auth_sessions (
+  token_hash TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  expires_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS devices (
   id TEXT PRIMARY KEY,
   install_id TEXT UNIQUE NOT NULL,
   token_hash TEXT NOT NULL,
   created_at TEXT NOT NULL,
   expires_at TEXT NOT NULL,
-  revoked INTEGER NOT NULL DEFAULT 0
+  revoked INTEGER NOT NULL DEFAULT 0,
+  user_id TEXT REFERENCES users(id)
 );
 
 CREATE TABLE IF NOT EXISTS usage_daily (
@@ -55,6 +84,12 @@ class RelayStore:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         with self._connect() as con:
             con.executescript(_SCHEMA)
+            self._migrate_schema(con)
+
+    def _migrate_schema(self, con: sqlite3.Connection) -> None:
+        cols = {row[1] for row in con.execute("PRAGMA table_info(devices)")}
+        if "user_id" not in cols:
+            con.execute("ALTER TABLE devices ADD COLUMN user_id TEXT REFERENCES users(id)")
 
     @contextmanager
     def _connect(self):
@@ -77,6 +112,7 @@ class RelayStore:
         token_ttl_days: int,
         client_ip: str,
         max_registrations_per_ip: int,
+        user_id: str | None = None,
     ) -> tuple[str, str]:
         """Return (raw_device_token, expires_at_iso)."""
         now = datetime.now(UTC)
@@ -104,8 +140,8 @@ class RelayStore:
             device_id = str(uuid.uuid4())
             con.execute(
                 """
-                INSERT INTO devices (id, install_id, token_hash, created_at, expires_at, revoked)
-                VALUES (?, ?, ?, ?, ?, 0)
+                INSERT INTO devices (id, install_id, token_hash, created_at, expires_at, revoked, user_id)
+                VALUES (?, ?, ?, ?, ?, 0, ?)
                 """,
                 (
                     device_id,
@@ -113,6 +149,7 @@ class RelayStore:
                     hash_token(token, secret),
                     now.isoformat(),
                     expires_iso,
+                    user_id,
                 ),
             )
             con.execute(
@@ -130,7 +167,7 @@ class RelayStore:
         with self._connect() as con:
             row = con.execute(
                 """
-                SELECT id, install_id, token_hash, created_at, expires_at, revoked
+                SELECT id, install_id, token_hash, created_at, expires_at, revoked, user_id
                   FROM devices
                  WHERE token_hash = ?
                 """,
@@ -145,6 +182,7 @@ class RelayStore:
             created_at=row["created_at"],
             expires_at=row["expires_at"],
             revoked=bool(row["revoked"]),
+            user_id=row["user_id"],
         )
         if record.revoked:
             return None
@@ -222,6 +260,70 @@ class RelayStore:
             int(ip_row["requests"]),
         )
 
+    def create_user(self, email: str, password: str, display_name: str) -> UserRecord:
+        now = datetime.now(UTC).isoformat()
+        user_id = str(uuid.uuid4())
+        with self._connect() as con:
+            existing = con.execute(
+                "SELECT id FROM users WHERE email = ?", (email,)
+            ).fetchone()
+            if existing is not None:
+                raise DuplicateEmailError(email)
+            con.execute(
+                """
+                INSERT INTO users (id, email, password_hash, display_name, created_at)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (user_id, email, hash_password(password), display_name, now),
+            )
+        return UserRecord(user_id=user_id, email=email, display_name=display_name, created_at=now)
+
+    def authenticate_user(self, email: str, password: str) -> UserRecord | None:
+        with self._connect() as con:
+            row = con.execute(
+                "SELECT id, email, display_name, created_at, password_hash FROM users WHERE email = ?",
+                (email,),
+            ).fetchone()
+        if row is None:
+            return None
+        if not verify_password(password, row["password_hash"]):
+            return None
+        return UserRecord(
+            user_id=row["id"],
+            email=row["email"],
+            display_name=row["display_name"],
+            created_at=row["created_at"],
+        )
+
+    def create_auth_session(
+        self, user_id: str, secret: str, token_ttl_days: int
+    ) -> tuple[str, str]:
+        token = generate_device_token()
+        expires_at = datetime.now(UTC) + timedelta(days=token_ttl_days)
+        expires_iso = expires_at.isoformat()
+        with self._connect() as con:
+            con.execute(
+                """
+                INSERT INTO auth_sessions (token_hash, user_id, expires_at)
+                VALUES (?, ?, ?)
+                """,
+                (hash_token(token, secret), user_id, expires_iso),
+            )
+        return token, expires_iso
+
+    def resolve_auth_session(self, token: str, secret: str) -> str | None:
+        token_hash = hash_token(token, secret)
+        with self._connect() as con:
+            row = con.execute(
+                "SELECT user_id, expires_at FROM auth_sessions WHERE token_hash = ?",
+                (token_hash,),
+            ).fetchone()
+        if row is None:
+            return None
+        if datetime.fromisoformat(row["expires_at"]) < datetime.now(UTC):
+            return None
+        return str(row["user_id"])
+
 
 class DuplicateInstallError(Exception):
     def __init__(self, install_id: str) -> None:
@@ -233,3 +335,9 @@ class RegistrationLimitError(Exception):
     def __init__(self, ip: str) -> None:
         self.ip = ip
         super().__init__(f"registration limit exceeded for ip: {ip}")
+
+
+class DuplicateEmailError(Exception):
+    def __init__(self, email: str) -> None:
+        self.email = email
+        super().__init__(f"email already registered: {email}")

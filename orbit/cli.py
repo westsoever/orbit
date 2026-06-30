@@ -127,7 +127,20 @@ def main() -> None:
         help="Diagnose Python/SQLite setup (embeddings require loadable extensions)",
     )
 
+    auth_p = sub.add_parser("auth", help="Manage Orbit user session")
+    auth_sub = auth_p.add_subparsers(dest="auth_action", metavar="action")
+
+    auth_status_p = auth_sub.add_parser("status", help="Show active user session")
+    auth_signout_p = auth_sub.add_parser("sign-out", help="Clear active session")
+    auth_signin_p = auth_sub.add_parser(
+        "sign-in", help="Set active session (headless/dev; sign-up is in Orbit Access App)"
+    )
+    auth_signin_p.add_argument("--user-id", required=True)
+    auth_signin_p.add_argument("--email", default="")
+
     args = parser.parse_args()
+
+    from orbit.storage.session import NoActiveUserError, get_active_session
 
     if args.command == "doctor":
         from orbit.runtime import doctor_report, sqlite_supports_extensions
@@ -136,6 +149,14 @@ def main() -> None:
         sys.exit(0 if sqlite_supports_extensions() else 1)
 
     if args.command == "start":
+        try:
+            from orbit.storage.session import require_active_user_id
+
+            require_active_user_id()
+        except NoActiveUserError as exc:
+            print(str(exc), file=sys.stderr)
+            sys.exit(1)
+
         import os
 
         from orbit.runtime import sqlite_supports_extensions
@@ -243,6 +264,28 @@ def main() -> None:
 
         from orbit.check.__main__ import main as check_main
         check_main()
+
+    elif args.command == "auth":
+        from orbit.storage.session import clear_session, get_active_session, set_active_user
+
+        if args.auth_action == "status":
+            session = get_active_session()
+            if session is None:
+                print("No active Orbit user session.")
+                sys.exit(1)
+            print(f"user_id: {session.user_id}")
+            if session.email:
+                print(f"email: {session.email}")
+            print(f"signed_in_at: {session.signed_in_at}")
+        elif args.auth_action == "sign-out":
+            clear_session()
+            print("Signed out.")
+        elif args.auth_action == "sign-in":
+            set_active_user(args.user_id, email=args.email or "")
+            print(f"Signed in as {args.user_id}.")
+        else:
+            auth_p.print_help()
+            sys.exit(1)
 
     else:
         parser.print_help()

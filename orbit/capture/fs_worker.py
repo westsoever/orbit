@@ -9,6 +9,8 @@ import queue
 import sqlite3
 import threading
 
+from orbit.storage.session import get_active_user_id, require_active_user_id
+
 logger = logging.getLogger(__name__)
 
 _CAPTURE_TIER = 3
@@ -22,22 +24,34 @@ def path_mtime(path: str) -> float | None:
         return None
 
 
-def find_linked_event(con: sqlite3.Connection, ts_iso: str) -> int | None:
+def find_linked_event(con: sqlite3.Connection, ts_iso: str, user_id: str | None = None) -> int | None:
     try:
         ts = datetime.datetime.fromisoformat(ts_iso.replace("Z", "+00:00"))
     except ValueError:
         return None
     lo = (ts - datetime.timedelta(seconds=_LINK_WINDOW_S)).isoformat()
     hi = (ts + datetime.timedelta(seconds=_LINK_WINDOW_S)).isoformat()
-    row = con.execute(
-        """
-        SELECT id FROM context_events
-        WHERE timestamp >= ? AND timestamp <= ?
-        ORDER BY ABS(julianday(timestamp) - julianday(?))
-        LIMIT 1
-        """,
-        (lo, hi, ts_iso),
-    ).fetchone()
+    uid = user_id or get_active_user_id()
+    if uid:
+        row = con.execute(
+            """
+            SELECT id FROM context_events
+            WHERE user_id = ? AND timestamp >= ? AND timestamp <= ?
+            ORDER BY ABS(julianday(timestamp) - julianday(?))
+            LIMIT 1
+            """,
+            (uid, lo, hi, ts_iso),
+        ).fetchone()
+    else:
+        row = con.execute(
+            """
+            SELECT id FROM context_events
+            WHERE timestamp >= ? AND timestamp <= ?
+            ORDER BY ABS(julianday(timestamp) - julianday(?))
+            LIMIT 1
+            """,
+            (lo, hi, ts_iso),
+        ).fetchone()
     return int(row[0]) if row else None
 
 
@@ -52,15 +66,16 @@ def record_fs_event(
     if not ts or not path:
         return None
     mtime = path_mtime(path)
+    user_id = require_active_user_id()
     with lock:
-        linked = find_linked_event(con, ts)
+        linked = find_linked_event(con, ts, user_id=user_id)
         cur = con.execute(
             """
             INSERT INTO fs_events
-              (timestamp, path, event_type, mtime, linked_event_id, capture_tier)
-            VALUES (?, ?, ?, ?, ?, ?)
+              (user_id, timestamp, path, event_type, mtime, linked_event_id, capture_tier)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            (ts, path, event_type, mtime, linked, _CAPTURE_TIER),
+            (user_id, ts, path, event_type, mtime, linked, _CAPTURE_TIER),
         )
         row_id = cur.lastrowid
     if row_id:
