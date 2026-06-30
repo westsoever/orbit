@@ -49,7 +49,7 @@ def check_db(path):
     ).fetchall()
     for r in rows:
         print(r[0])
-    required = {'fs_events', 'capture_audit'}
+    required = {'fs_events', 'capture_audit', 'users'}
     found = {r[0] for r in rows}
     missing = required - found
     if missing:

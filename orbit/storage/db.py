@@ -10,13 +10,16 @@ Two open paths:
 
 Use ``sqlite_supports_extensions()`` to probe capability before calling ``open_db``.
 """
+import os
 import sqlite3
 import sys
 import threading
 import sqlite_vec
+from datetime import datetime, timezone
 from pathlib import Path
 
 from orbit.runtime import sqlite_supports_extensions
+from orbit.storage.session import LEGACY_USER_ID, legacy_user_email
 
 _SCHEMA = Path(__file__).parent / "schema.sql"
 
@@ -36,6 +39,74 @@ def _extension_error() -> RuntimeError:
         "See: https://alexgarcia.xyz/sqlite-vec/python.html"
     )
 
+def _table_names(con: sqlite3.Connection) -> set[str]:
+    return {
+        r[0]
+        for r in con.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()
+    }
+
+
+def _ensure_legacy_user(con: sqlite3.Connection) -> None:
+    row = con.execute(
+        "SELECT id FROM users WHERE id = ?", (LEGACY_USER_ID,)
+    ).fetchone()
+    if row is not None:
+        return
+    now = datetime.now(timezone.utc).isoformat()
+    con.execute(
+        """
+        INSERT INTO users (id, email, display_name, created_at, cloud_user_id)
+        VALUES (?, ?, ?, ?, NULL)
+        """,
+        (LEGACY_USER_ID, legacy_user_email(), "Legacy User", now),
+    )
+
+
+def _migrate_user_schema(con: sqlite3.Connection) -> None:
+    tables = _table_names(con)
+    if "users" not in tables:
+        con.executescript(
+            """
+            CREATE TABLE users (
+              id TEXT PRIMARY KEY,
+              email TEXT NOT NULL UNIQUE,
+              display_name TEXT NOT NULL,
+              created_at TEXT NOT NULL,
+              cloud_user_id TEXT
+            );
+            CREATE TABLE user_sessions (
+              user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+              last_active_at TEXT NOT NULL
+            );
+            """
+        )
+    _ensure_legacy_user(con)
+
+    user_tables = (
+        ("context_events", "idx_events_user_ts"),
+        ("fs_events", "idx_fs_events_user_ts"),
+        ("capture_audit", "idx_capture_audit_user_ts"),
+        ("task_log", "idx_task_log_user_ts"),
+    )
+    for table, index_name in user_tables:
+        if table not in _table_names(con):
+            continue
+        cols = {row[1] for row in con.execute(f"PRAGMA table_info({table})")}
+        if "user_id" not in cols:
+            con.execute(
+                f"ALTER TABLE {table} ADD COLUMN user_id TEXT REFERENCES users(id)"
+            )
+            con.execute(
+                f"UPDATE {table} SET user_id = ? WHERE user_id IS NULL",
+                (LEGACY_USER_ID,),
+            )
+            con.execute(
+                f"CREATE INDEX IF NOT EXISTS {index_name} ON {table}(user_id, timestamp)"
+            )
+
+
 def _migrate_schema(con: sqlite3.Connection) -> None:
     cols = {row[1] for row in con.execute("PRAGMA table_info(context_events)")}
     if "capture_method" not in cols:
@@ -49,12 +120,7 @@ def _migrate_schema(con: sqlite3.Connection) -> None:
     if "page_url" not in cols:
         con.execute("ALTER TABLE context_events ADD COLUMN page_url TEXT")
 
-    tables = {
-        r[0]
-        for r in con.execute(
-            "SELECT name FROM sqlite_master WHERE type='table'"
-        ).fetchall()
-    }
+    tables = _table_names(con)
     if "fs_events" not in tables:
         con.executescript(
             """
@@ -85,6 +151,8 @@ def _migrate_schema(con: sqlite3.Connection) -> None:
             CREATE INDEX idx_capture_audit_ts ON capture_audit(timestamp);
             """
         )
+
+    _migrate_user_schema(con)
 
 
 def _apply_schema(con: sqlite3.Connection, skip_vec: bool = False) -> None:

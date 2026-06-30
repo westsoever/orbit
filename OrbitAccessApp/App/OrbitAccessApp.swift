@@ -7,12 +7,20 @@ struct OrbitAccessApp: App {
 
     var body: some Scene {
         WindowGroup("Orbit", id: "main") {
-            MainWindowView()
-                .environment(model)
-                .task {
-                    await model.start()
-                    appDelegate.configureStatusBar(viewModel: model)
+            Group {
+                if model.isSignedIn {
+                    MainWindowView()
+                } else {
+                    OnboardingContainerView()
                 }
+            }
+            .environment(model)
+            .task {
+                if model.isSignedIn {
+                    await model.start()
+                }
+                appDelegate.configureStatusBar(viewModel: model)
+            }
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1200, height: 740)

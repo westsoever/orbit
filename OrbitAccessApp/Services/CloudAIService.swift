@@ -100,6 +100,9 @@ final class CloudAIService: @unchecked Sendable {
         var request = URLRequest(url: relayURL.appendingPathComponent("/v1/devices/register"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let sessionToken = UserAuthService.shared.sessionToken {
+            request.setValue("Bearer \(sessionToken)", forHTTPHeaderField: "Authorization")
+        }
         let body: [String: String] = [
             "install_id": installID.uuidString,
             "app_version": Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1",

@@ -44,6 +44,10 @@ struct CloudAISettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.red)
             }
+
+            Divider()
+
+            AccountSettingsView()
         }
         .padding()
         .frame(maxWidth: 360, alignment: .leading)

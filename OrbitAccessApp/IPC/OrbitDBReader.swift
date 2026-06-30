@@ -19,6 +19,15 @@ final class OrbitDBReader: @unchecked Sendable {
 
     var isReady: Bool { pool != nil }
 
+    private var activeUserId: String? {
+        UserSessionService.shared.currentSession?.userId
+    }
+
+    private func userEventFilter(column: String = "e.user_id") -> (sql: String, arguments: [DatabaseValueConvertible]) {
+        guard let uid = activeUserId else { return ("", []) }
+        return (" AND \(column) = ?", [uid])
+    }
+
     @MainActor
     func bootstrap() async throws {
         let url = OrbitPaths.databaseURL
@@ -40,23 +49,50 @@ final class OrbitDBReader: @unchecked Sendable {
     }
 
     func fetchRecentCaptures(afterId: Int64, limit: Int = 10) throws -> [ContextEvent] {
-        try read { db in
-            try ContextEvent
-                .filter(Column("id") > afterId)
-                .order(Column("id").desc)
-                .limit(limit)
-                .fetchAll(db)
+        let filter = userEventFilter(column: "user_id")
+        return try read { db in
+            if filter.sql.isEmpty {
+                return try ContextEvent
+                    .filter(Column("id") > afterId)
+                    .order(Column("id").desc)
+                    .limit(limit)
+                    .fetchAll(db)
+            }
+            return try ContextEvent.fetchAll(
+                db,
+                sql: """
+                SELECT * FROM context_events
+                WHERE id > ?\(filter.sql)
+                ORDER BY id DESC
+                LIMIT ?
+                """,
+                arguments: [afterId] + filter.arguments + [limit]
+            )
         }
     }
 
     func fetchRecentCapturesTail(limit: Int = 10) throws -> [ContextEvent] {
-        try read { db in
-            try ContextEvent.order(Column("id").desc).limit(limit).fetchAll(db)
+        let filter = userEventFilter(column: "user_id")
+        return try read { db in
+            if filter.sql.isEmpty {
+                return try ContextEvent.order(Column("id").desc).limit(limit).fetchAll(db)
+            }
+            return try ContextEvent.fetchAll(
+                db,
+                sql: """
+                SELECT * FROM context_events
+                WHERE 1=1\(filter.sql)
+                ORDER BY id DESC
+                LIMIT ?
+                """,
+                arguments: filter.arguments + [limit]
+            )
         }
     }
 
     func lexicalSearch(_ query: String, limit: Int = 20) throws -> [SearchHit] {
-        try read { db in
+        let filter = userEventFilter()
+        return try read { db in
             let rows = try Row.fetchAll(db, sql: """
                 SELECT
                     a.id AS atom_id,
@@ -72,10 +108,10 @@ final class OrbitDBReader: @unchecked Sendable {
                 FROM atoms_fts
                 JOIN text_atoms a ON a.id = atoms_fts.rowid
                 JOIN context_events e ON e.id = a.event_id
-                WHERE atoms_fts MATCH ?
+                WHERE atoms_fts MATCH ?\(filter.sql)
                 ORDER BY score
                 LIMIT ?
-                """, arguments: [query, limit])
+                """, arguments: [query] + filter.arguments + [limit])
             return rows.map { row in
                 SearchHit(
                     atomId: row["atom_id"],
@@ -96,7 +132,8 @@ final class OrbitDBReader: @unchecked Sendable {
     }
 
     func fetchAtomsByApp(_ appName: String, limit: Int = 20) throws -> [SearchHit] {
-        try read { db in
+        let filter = userEventFilter()
+        return try read { db in
             let rows = try Row.fetchAll(db, sql: """
                 SELECT
                     a.id AS atom_id,
@@ -111,16 +148,17 @@ final class OrbitDBReader: @unchecked Sendable {
                     0.0 AS score
                 FROM text_atoms a
                 JOIN context_events e ON e.id = a.event_id
-                WHERE e.app_name LIKE ?
+                WHERE e.app_name LIKE ?\(filter.sql)
                 ORDER BY e.timestamp DESC
                 LIMIT ?
-                """, arguments: ["%\(appName)%", limit])
+                """, arguments: ["%\(appName)%"] + filter.arguments + [limit])
             return rows.map { Self.searchHit(from: $0) }
         }
     }
 
     func fetchAtomsByHour(_ hour: String?, limit: Int = 20) throws -> [SearchHit] {
-        try read { db in
+        let filter = userEventFilter()
+        return try read { db in
             let rows: [Row]
             if let hour, !hour.isEmpty {
                 let normalized = hour.count == 1 ? "0\(hour)" : String(hour.prefix(2))
@@ -139,10 +177,10 @@ final class OrbitDBReader: @unchecked Sendable {
                     FROM text_atoms a
                     JOIN context_events e ON e.id = a.event_id
                     WHERE date(e.timestamp) = date('now')
-                      AND strftime('%H', e.timestamp) = ?
+                      AND strftime('%H', e.timestamp) = ?\(filter.sql)
                     ORDER BY e.timestamp DESC
                     LIMIT ?
-                    """, arguments: [normalized, limit])
+                    """, arguments: [normalized] + filter.arguments + [limit])
             } else {
                 rows = try Row.fetchAll(db, sql: """
                     SELECT
@@ -158,35 +196,38 @@ final class OrbitDBReader: @unchecked Sendable {
                         0.0 AS score
                     FROM text_atoms a
                     JOIN context_events e ON e.id = a.event_id
-                    WHERE date(e.timestamp) = date('now')
+                    WHERE date(e.timestamp) = date('now')\(filter.sql)
                     ORDER BY e.timestamp DESC
                     LIMIT ?
-                    """, arguments: [limit])
+                    """, arguments: filter.arguments + [limit])
             }
             return rows.map { Self.searchHit(from: $0) }
         }
     }
 
     func atomsCapturedToday() throws -> Int {
-        try read { db in
+        let filter = userEventFilter()
+        return try read { db in
             try Int.fetchOne(db, sql: """
                 SELECT COUNT(*)
                 FROM text_atoms a
                 JOIN context_events e ON e.id = a.event_id
-                WHERE date(e.timestamp) = date('now')
-                """) ?? 0
+                WHERE date(e.timestamp) = date('now')\(filter.sql)
+                """, arguments: filter.arguments) ?? 0
         }
     }
 
     func computeScoreInputs() throws -> ScoreInputs {
-        try read { db in
+        let filter = userEventFilter(column: "user_id")
+        let taskFilter = userEventFilter(column: "user_id")
+        return try read { db in
             let taskRow = try Row.fetchOne(db, sql: """
                 SELECT
                     SUM(CASE WHEN status IN ('approved','dispatched') THEN 1 ELSE 0 END) AS done,
                     SUM(CASE WHEN status = 'detected' THEN 1 ELSE 0 END) AS pending
                 FROM task_log
-                WHERE date(timestamp) = date('now')
-                """)
+                WHERE date(timestamp) = date('now')\(taskFilter.sql)
+                """, arguments: taskFilter.arguments)
             let done = Double(taskRow?["done"] ?? 0)
             let pending = Double(taskRow?["pending"] ?? 0)
             let taskCompletion = done / max(1, done + pending)
@@ -194,9 +235,9 @@ final class OrbitDBReader: @unchecked Sendable {
             let focusRows = try Row.fetchAll(db, sql: """
                 SELECT app_bundle_id, COUNT(*) AS c
                 FROM context_events
-                WHERE date(timestamp) = date('now')
+                WHERE date(timestamp) = date('now')\(filter.sql)
                 GROUP BY app_bundle_id
-                """)
+                """, arguments: filter.arguments)
             let counts: [Double] = focusRows.map { Double($0["c"] as Int64) }
             let total = counts.reduce(0, +)
             let topShare = total > 0 ? (counts.max() ?? 0) / total : 0
@@ -206,16 +247,16 @@ final class OrbitDBReader: @unchecked Sendable {
                 SELECT COUNT(*)
                 FROM text_atoms a
                 JOIN context_events e ON e.id = a.event_id
-                WHERE date(e.timestamp) = date('now')
-                """) ?? 0)
+                WHERE date(e.timestamp) = date('now')\(filter.sql)
+                """, arguments: filter.arguments) ?? 0)
             let contextRichness = min(1, atoms / 500)
 
             let hours = Double(try Int.fetchOne(db, sql: """
                 SELECT COUNT(DISTINCT strftime('%H', timestamp))
                 FROM context_events
                 WHERE date(timestamp) = date('now')
-                  AND strftime('%H', timestamp) BETWEEN '09' AND '17'
-                """) ?? 0)
+                  AND strftime('%H', timestamp) BETWEEN '09' AND '17'\(filter.sql)
+                """, arguments: filter.arguments) ?? 0)
             let captureConsistency = min(1, hours / 8)
 
             return ScoreInputs(
@@ -234,30 +275,43 @@ final class OrbitDBReader: @unchecked Sendable {
     /// Pending tasks for today — SQL from orbit/check/log.py get_pending_today
     func fetchPendingTasksToday(reportDate: String? = nil) throws -> [TaskLogEntry] {
         let date = reportDate ?? Self.localTodayISO()
+        let filter = userEventFilter(column: "user_id")
         do {
-            return try fetchPendingTasksTodayRows(includeDescription: true, reportDate: date)
+            return try fetchPendingTasksTodayRows(
+                includeDescription: true,
+                reportDate: date,
+                userFilter: filter
+            )
         } catch {
-            return try fetchPendingTasksTodayRows(includeDescription: false, reportDate: date)
+            return try fetchPendingTasksTodayRows(
+                includeDescription: false,
+                reportDate: date,
+                userFilter: filter
+            )
         }
     }
 
-    private func fetchPendingTasksTodayRows(includeDescription: Bool, reportDate: String) throws -> [TaskLogEntry] {
+    private func fetchPendingTasksTodayRows(
+        includeDescription: Bool,
+        reportDate: String,
+        userFilter: (sql: String, arguments: [DatabaseValueConvertible])
+    ) throws -> [TaskLogEntry] {
         try read { db in
             let sql: String
             if includeDescription {
                 sql = """
                     SELECT id, title, description, original_prompt, agent_type
                     FROM task_log
-                    WHERE status = 'detected' AND date(timestamp) = ?
+                    WHERE status = 'detected' AND date(timestamp) = ?\(userFilter.sql)
                     """
             } else {
                 sql = """
                     SELECT id, title, original_prompt, agent_type
                     FROM task_log
-                    WHERE status = 'detected' AND date(timestamp) = ?
+                    WHERE status = 'detected' AND date(timestamp) = ?\(userFilter.sql)
                     """
             }
-            let rows = try Row.fetchAll(db, sql: sql, arguments: [reportDate])
+            let rows = try Row.fetchAll(db, sql: sql, arguments: [reportDate] + userFilter.arguments)
             return rows.map { row in
                 TaskLogEntry(
                     id: row["id"],

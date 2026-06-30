@@ -80,6 +80,14 @@ def main() -> None:
 
     hide_from_dock()
 
+    from orbit.storage.session import NoActiveUserError, require_active_user_id
+
+    try:
+        require_active_user_id()
+    except NoActiveUserError as exc:
+        logger.error("%s", exc)
+        sys.exit(1)
+
     from orbit.daemon_ctl import is_daemon_running
     from orbit.daemon_pid import read_pid
 

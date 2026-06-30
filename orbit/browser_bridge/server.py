@@ -19,6 +19,7 @@ from urllib.parse import parse_qs, urlparse
 
 from orbit.check.log import get_pending_today, migrate, update_status
 from orbit.search.types import Hit
+from orbit.storage.session import get_active_user_id
 
 logger = logging.getLogger(__name__)
 
@@ -236,10 +237,14 @@ class _BridgeHandler(BaseHTTPRequestHandler):
             self.send_error(400, "invalid limit")
             return
         con, _lock = db_ref
+        user_id = get_active_user_id()
         try:
             from orbit.search.hybrid import search_bridge
 
-            hits = [_hit_to_dict(h) for h in search_bridge(con, q, limit=limit)]
+            hits = [
+                _hit_to_dict(h)
+                for h in search_bridge(con, q, limit=limit, user_id=user_id)
+            ]
         except Exception as exc:
             logger.exception("search failed")
             _send_json(self, 503, {"error": str(exc)})
@@ -258,10 +263,11 @@ class _BridgeHandler(BaseHTTPRequestHandler):
             self.send_error(400, "query required")
             return
         con, _lock = db_ref
+        user_id = get_active_user_id()
         try:
             from orbit.search.hybrid import search_bridge
 
-            hits = search_bridge(con, query, limit=8)
+            hits = search_bridge(con, query, limit=8, user_id=user_id)
         except Exception as exc:
             logger.exception("chat search failed")
             _send_json(self, 503, {"error": str(exc)})

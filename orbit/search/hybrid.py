@@ -27,13 +27,16 @@ def search_bridge(
     query: str,
     limit: int = 20,
     app_bundle_id: str | None = None,
+    user_id: str | None = None,
 ) -> list[Hit]:
     """Hybrid search when embeddings exist; lexical FTS otherwise (--no-embed)."""
     if _has_vec_atoms(con):
-        return search_hybrid(con, query, limit=limit, app_bundle_id=app_bundle_id)
+        return search_hybrid(
+            con, query, limit=limit, app_bundle_id=app_bundle_id, user_id=user_id
+        )
     from orbit.search.lexical import search_lexical
 
-    return search_lexical(con, query, limit=limit, app_bundle_id=app_bundle_id)
+    return search_lexical(con, query, limit=limit, app_bundle_id=app_bundle_id, user_id=user_id)
 
 
 def search_hybrid(
@@ -41,6 +44,7 @@ def search_hybrid(
     query: str,
     limit: int = 20,
     app_bundle_id: str | None = None,
+    user_id: str | None = None,
     k_each: int = 60,
     rrf_k: int = 60,
 ) -> list[Hit]:
@@ -95,6 +99,8 @@ def search_hybrid(
 
     # --- 4. Fetch full rows for the top-k atom IDs ----------------------------
     placeholders = ",".join("?" * len(ranked_ids))
+    user_clause = " AND e.user_id = ?" if user_id else ""
+    user_params: list = [user_id] if user_id else []
     rows = con.execute(
         f"""
         SELECT a.id AS atom_id, a.event_id, a.role, a.label,
@@ -104,8 +110,9 @@ def search_hybrid(
           JOIN context_events e ON e.id = a.event_id
          WHERE a.id IN ({placeholders})
            AND (? IS NULL OR e.app_bundle_id = ?)
+           {user_clause}
         """,
-        [*ranked_ids, app_bundle_id, app_bundle_id],
+        [*ranked_ids, app_bundle_id, app_bundle_id, *user_params],
     ).fetchall()
 
     # Map to dict for quick lookup, then order by RRF rank

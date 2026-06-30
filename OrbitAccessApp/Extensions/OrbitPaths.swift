@@ -37,6 +37,10 @@ enum OrbitPaths {
         orbitDirectory.appendingPathComponent(".env", isDirectory: false)
     }
 
+    static var sessionURL: URL {
+        orbitDirectory.appendingPathComponent("session.json", isDirectory: false)
+    }
+
     static func ensureOrbitDirectoryExists() throws {
         try FileManager.default.createDirectory(at: orbitDirectory, withIntermediateDirectories: true)
     }

@@ -4,6 +4,7 @@ import GRDB
 struct ContextEvent: Codable, FetchableRecord, TableRecord, Identifiable, Sendable {
     static let databaseTableName = "context_events"
     let id: Int64
+    let userId: String?
     let timestamp: String
     let appBundleId: String?
     let appName: String?
@@ -18,6 +19,7 @@ struct ContextEvent: Codable, FetchableRecord, TableRecord, Identifiable, Sendab
 
     enum CodingKeys: String, CodingKey {
         case id, timestamp
+        case userId = "user_id"
         case appBundleId = "app_bundle_id"
         case appName = "app_name"
         case windowTitle = "window_title"

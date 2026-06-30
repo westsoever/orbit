@@ -51,6 +51,9 @@ def test_schema_and_linking() -> None:
     try:
         db = os.path.join(tmp, "test.db")
         con, lock = open_db_plain(db)
+        from orbit.storage.session import LEGACY_USER_ID, set_active_user
+
+        set_active_user(LEGACY_USER_ID, email="test@orbit.local")
         ts = datetime.now(timezone.utc).isoformat()
         event_id, _ = record_event(
             con,
