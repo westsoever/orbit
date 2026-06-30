@@ -60,14 +60,10 @@ struct CloudAIEnableCard: View {
             do {
                 _ = try await CloudAIService.shared.register()
                 await MainActor.run { model.refreshCloudAIState() }
-            } catch let urlError as URLError {
-                let unreachable: Set<URLError.Code> = [.cannotConnectToHost, .cannotFindHost, .networkConnectionLost, .timedOut, .notConnectedToInternet]
-                let message = unreachable.contains(urlError.code)
-                    ? "Cloud AI service is unreachable. Make sure the relay is running (or set ORBIT_RELAY_URL)."
-                    : urlError.localizedDescription
-                await MainActor.run { errorMessage = message }
             } catch {
-                await MainActor.run { errorMessage = error.localizedDescription }
+                await MainActor.run {
+                    errorMessage = ChatErrorFormatter.cloudRegistrationMessage(for: error)
+                }
             }
         }
     }

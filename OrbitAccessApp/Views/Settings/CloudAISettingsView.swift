@@ -27,7 +27,7 @@ struct CloudAISettingsView: View {
                 .font(.caption2)
                 .foregroundStyle(Color.orbitSecondaryText(for: colorScheme))
 
-            if CloudAIService.shared.hasLocalLLM() {
+            if CloudAIService.shared.hasLocalLLMConfigured() {
                 Text("Using a local model (Ollama) — cloud AI not required.")
                     .font(.caption)
                     .foregroundStyle(Color.orbitSecondaryText(for: colorScheme))
@@ -58,20 +58,15 @@ struct CloudAISettingsView: View {
             do {
                 _ = try await CloudAIService.shared.register()
                 model.refreshCloudAIState()
-            } catch let urlError as URLError {
-                let unreachable: Set<URLError.Code> = [.cannotConnectToHost, .cannotFindHost, .networkConnectionLost, .timedOut, .notConnectedToInternet]
-                errorMessage = unreachable.contains(urlError.code)
-                    ? "Cloud AI service is unreachable. Make sure the relay is running (or set ORBIT_RELAY_URL)."
-                    : urlError.localizedDescription
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ChatErrorFormatter.cloudRegistrationMessage(for: error)
             }
         } else {
             do {
                 try CloudAIService.shared.disable()
                 model.refreshCloudAIState()
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = ChatErrorFormatter.userMessage(for: error)
             }
         }
     }

@@ -93,12 +93,15 @@ struct ChatInputBar: View {
             return "Waiting for Orbit database…"
         }
         if model.canUseAIChat {
-            return "Ask Orbit anything…"
+            if model.hasConfiguredAI {
+                return "Ask Orbit anything…"
+            }
+            return "Ask Orbit anything… (uses local Ollama if available)"
         }
-        if model.canUseLiveServices && model.shouldShowCloudAIEnablePrompt {
-            return "Enable Cloud AI above, or search saved context…"
+        if model.canSearchLocally {
+            return "Search your saved context (start daemon for AI answers)…"
         }
-        return "Search your context (offline — start daemon for AI answers)…"
+        return "Start the Orbit daemon to chat…"
     }
 
     private var sendButton: some View {
@@ -119,7 +122,10 @@ struct ChatInputBar: View {
     }
 
     private var sendHelp: String {
-        model.canUseAIChat ? "Send message" : "Search saved context"
+        if model.canUseAIChat {
+            return model.hasConfiguredAI ? "Send message to Orbit AI" : "Send message (AI or keyword fallback)"
+        }
+        return "Search saved context"
     }
 
     private var spinOffButton: some View {
@@ -142,15 +148,16 @@ struct ChatInputBar: View {
     private var canSend: Bool {
         !model.chatStore.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !model.chatStore.isStreaming
-            && (model.canUseAIChat || model.canSearchLocally)
+            && (model.canUseLiveServices || model.canSearchLocally)
     }
 
     private func sendMessage() {
         guard canSend else { return }
         Task {
             await model.chatStore.send(
-                canUseAIChat: model.canUseAIChat,
-                canSearchLocally: model.canSearchLocally
+                canUseLiveServices: model.canUseLiveServices,
+                canSearchLocally: model.canSearchLocally,
+                hasDatabase: model.canBrowseContext
             )
         }
     }

@@ -19,14 +19,21 @@ enum OrbitBridgeError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .invalidResponse: return "Invalid response from Orbit daemon."
-        case .httpStatus(let code): return "Orbit daemon returned HTTP \(code)."
-        case .serverMessage(let message):
-            if message.contains("rate_limit") || message.contains("Daily cloud AI limit") {
-                return "Daily cloud AI limit reached. Try again tomorrow or add your own API key in ~/.orbit/.env"
+        case .invalidResponse:
+            return "Orbit returned an unexpected response. Try restarting the daemon from the sidebar."
+        case .httpStatus(let code):
+            switch code {
+            case 503:
+                return "Orbit could not answer right now. Check that AI is configured (Cloud AI, an API key in ~/.orbit/.env, or a local Ollama model)."
+            case 502, 504:
+                return "Orbit timed out while generating an answer. Try a shorter question or check your AI provider."
+            default:
+                return "Orbit daemon returned an error (HTTP \(code)). Try restarting the daemon."
             }
-            return message
-        case .daemonOffline: return "Orbit daemon is offline."
+        case .serverMessage(let message):
+            return ChatErrorFormatter.relayRegistrationMessage(message)
+        case .daemonOffline:
+            return "Orbit daemon is not running. Start it from the sidebar to chat with AI."
         }
     }
 }

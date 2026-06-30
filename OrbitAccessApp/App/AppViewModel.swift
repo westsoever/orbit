@@ -23,9 +23,11 @@ final class AppViewModel {
     /// Lexical search + offline snippet chat
     var canSearchLocally: Bool { canBrowseContext }
 
-    /// AI streaming chat via bridge (requires cloud enablement or BYOK)
-    var canUseAIChat: Bool {
-        canUseLiveServices && (isCloudAIEnabled || cloudAI.hasBYOK() || cloudAI.hasLocalLLM())
+    /// AI streaming chat via bridge when the daemon is online (LLM routing happens in the daemon).
+    var canUseAIChat: Bool { canUseLiveServices }
+
+    var hasConfiguredAI: Bool {
+        isCloudAIEnabled || cloudAI.hasBYOK() || cloudAI.hasLocalLLMConfigured()
     }
     var isCloudAIEnabled = false
     var showCloudAISettings = false
@@ -60,7 +62,7 @@ final class AppViewModel {
     }
 
     var shouldShowCloudAIEnablePrompt: Bool {
-        cloudAI.shouldShowEnablePrompt(isDaemonOnline: isDaemonOnline)
+        isDaemonOnline && !hasConfiguredAI
     }
 
     @MainActor
