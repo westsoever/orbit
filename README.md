@@ -6,30 +6,98 @@ Always-on agentic system for macOS. Captures working context via the Accessibili
 
 ---
 
-## Install
+## Install & test (macOS)
 
-### macOS
+Orbit ships as a native macOS app (`Orbit.app`) plus a terminal CLI. **Testers do not need to clone the repo** — use one of the paths below.
 
-**macOS 14+.** Requires [Homebrew](https://brew.sh) for the first install (Python 3.13).
+### Requirements
+
+| Requirement | Notes |
+|-------------|-------|
+| **macOS 14+** (Sonoma or later) | Apple Silicon or Intel |
+| **[Homebrew](https://brew.sh)** | Installs Python 3.13 if missing |
+| **Xcode Command Line Tools** | `xcode-select --install` (needed to build the Swift UI) |
+| **~10 GB free disk** | Build cache + PyTorch/sentence-transformers download (~1–2 GB) |
+| **Internet on first install** | Source build downloads Python deps; capture itself stays local |
+
+First install typically takes **15–30 minutes** (Swift compile + pip install). Later reinstalls are faster.
+
+### Option A — One-line install (recommended for testers)
+
+Builds from the latest `main` branch and installs to `/Applications`:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/westsoever/orbit/main/scripts/install.sh | bash
 ```
 
-Installs **Orbit** to `/Applications`. Run `orbit` from the terminal or open the app from Spotlight.
-
-Grant **Accessibility** to Orbit before capture works ([permissions guide](orbit/capture/PERMISSIONS.md)).
+Skip auto-launch after install:
 
 ```bash
-orbit doctor                      # verify embedded Python + SQLite
-orbit start --detach --no-embed   # optional: start daemon from Terminal
+ORBIT_NO_START=1 curl -fsSL https://raw.githubusercontent.com/westsoever/orbit/main/scripts/install.sh | bash
 ```
 
-User data: `~/.orbit/` (database, policy, logs).
+When finished you should have:
 
-**Uninstall:** `rm -rf /Applications/Orbit.app /usr/local/bin/orbit` (add `rm -rf ~/.orbit` to delete captured data).
+- `/Applications/Orbit.app` — open from Spotlight or Dock
+- `orbit` on your PATH (symlinked to `/usr/local/bin/orbit`)
 
-**Release install (pre-built zip, when available):** `ORBIT_VERSION=0.0.1 ORBIT_INSTALL_FROM_SOURCE=0 curl -fsSL …/install.sh | bash`
+User data lives in `~/.orbit/` (database, policy, logs) and survives app upgrades.
+
+### Option B — Pre-built zip (GitHub Releases)
+
+When a [GitHub Release](https://github.com/westsoever/orbit/releases) is published, download **`Orbit-darwin.zip`** and unzip, or install via:
+
+```bash
+ORBIT_VERSION=0.0.1 ORBIT_INSTALL_FROM_SOURCE=0 \
+  curl -fsSL https://raw.githubusercontent.com/westsoever/orbit/main/scripts/install.sh | bash
+```
+
+Replace `0.0.1` with the tag shown on the release page. Pre-built installs skip the compile step and finish in a few minutes.
+
+### First launch (all installs)
+
+1. **Gatekeeper (unsigned beta builds):** If macOS says the app is from an unidentified developer, right-click **Orbit** in `/Applications` → **Open**, or run:
+   ```bash
+   xattr -cr /Applications/Orbit.app
+   open -a Orbit
+   ```
+2. **Accessibility:** System Settings → Privacy & Security → **Accessibility** → enable **Orbit**. Capture will not work without this ([full guide](orbit/capture/PERMISSIONS.md)).
+3. **Start capture:** In the Orbit sidebar under **CAPTURE**, click **Start** (or run `orbit start --detach --no-embed` from Terminal).
+
+Verify the install:
+
+```bash
+orbit doctor
+curl -s http://127.0.0.1:8765/health    # {"ok": true} when daemon is running
+```
+
+### Tester checklist
+
+Work through these after install and report anything that fails in a [GitHub issue](https://github.com/westsoever/orbit/issues):
+
+| Step | What to do | Expected |
+|------|------------|----------|
+| 1 | `orbit doctor` | Python 3.13 + SQLite extensions OK |
+| 2 | Open Orbit → **Start** in CAPTURE | Green status dot; "Capturing" pulse |
+| 3 | Switch between 2–3 apps (Terminal, Safari, Notes) | History panel shows new entries within ~2 s |
+| 4 | Sidebar search for a word from a visible window | Results appear (lexical or hybrid) |
+| 5 | Chat tab → send a message | Response (needs Cloud AI enabled or local daemon + API key) |
+| 6 | `orbit stop` or sidebar **Stop** | Daemon stops; health check fails |
+
+Low-CPU testing: use `orbit start --detach --no-embed` (skips embedding model). Full smoke tests for contributors: `bash scripts/verify.sh --no-embed`.
+
+### Update or reinstall
+
+Re-run the install command — the script removes the old `/Applications/Orbit.app` first. Your data in `~/.orbit/` is kept unless you delete it manually.
+
+### Uninstall
+
+```bash
+orbit stop 2>/dev/null || true
+rm -rf /Applications/Orbit.app /usr/local/bin/orbit
+# Optional — delete all captured data:
+# rm -rf ~/.orbit
+```
 
 ---
 
