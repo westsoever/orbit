@@ -167,10 +167,11 @@ chmod +x "$CLI_WRAPPER"
 SWIFT_BIN=""
 if [[ "$ORBIT_SKIP_SWIFT" != "1" ]]; then
   cd "$APP_DIR"
-  if ! swift build -c release 2>&1; then
+  SWIFT_FLAGS=(-Xswiftc -strict-concurrency=minimal)
+  if ! swift build -c release "${SWIFT_FLAGS[@]}" 2>&1; then
     status "Release build failed; falling back to debug…"
     SWIFT_CONFIG="debug"
-    swift build -c debug 2>&1
+    swift build -c debug "${SWIFT_FLAGS[@]}" 2>&1
   fi
   SWIFT_BIN="$APP_DIR/.build/$SWIFT_CONFIG/OrbitAccessApp"
   [[ -f "$SWIFT_BIN" ]] || error "Swift binary not found at $SWIFT_BIN"

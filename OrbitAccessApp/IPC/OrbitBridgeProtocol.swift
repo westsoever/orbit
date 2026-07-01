@@ -94,3 +94,8 @@ struct TaskDetectResponse: Decodable, Sendable {
     let source: String?
     let count: Int?
 }
+
+struct TaskDetectRequest: Encodable, Sendable {
+    let refresh: Bool
+    let hours: Int
+}

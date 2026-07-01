@@ -71,7 +71,7 @@ final class OrbitBridgeClient: OrbitBridgeProtocol, @unchecked Sendable {
         var request = URLRequest(url: base.appendingPathComponent("/api/tasks/detect"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONEncoder().encode(["refresh": refresh, "hours": 4])
+        request.httpBody = try JSONEncoder().encode(TaskDetectRequest(refresh: refresh, hours: 4))
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
             throw OrbitBridgeError.invalidResponse
