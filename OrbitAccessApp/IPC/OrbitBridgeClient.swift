@@ -53,6 +53,44 @@ final class OrbitBridgeClient: OrbitBridgeProtocol, @unchecked Sendable {
         }
     }
 
+    func fetchKanbanTasks() async -> [TaskLogEntry] {
+        guard await checkStatus() else { return [] }
+        do {
+            let request = URLRequest(url: base.appendingPathComponent("/api/tasks/kanban"))
+            let (data, response) = try await session.data(for: request)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return [] }
+            let decoded = try JSONDecoder().decode(KanbanTasksResponse.self, from: data)
+            return decoded.tasks
+        } catch {
+            return []
+        }
+    }
+
+    func detectTasks(refresh: Bool) async throws -> TaskDetectResult {
+        guard await checkStatus() else { throw OrbitBridgeError.daemonOffline }
+        var request = URLRequest(url: base.appendingPathComponent("/api/tasks/detect"))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(["refresh": refresh, "hours": 4])
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw OrbitBridgeError.invalidResponse
+        }
+        if http.statusCode == 404 || http.statusCode == 503 {
+            throw Self.bridgeError(from: data, statusCode: http.statusCode)
+        }
+        guard http.statusCode == 200 else {
+            throw OrbitBridgeError.httpStatus(http.statusCode)
+        }
+        let decoded = try JSONDecoder().decode(TaskDetectResponse.self, from: data)
+        let source = decoded.source ?? "capture"
+        let count = decoded.count ?? decoded.tasks.count
+        return TaskDetectResult(
+            tasks: decoded.tasks,
+            message: "\(count) task(s) from \(source)"
+        )
+    }
+
     func approve(id: Int64, prompt: String) async throws {
         try await postTaskAction(id: id, pathSuffix: "approve", body: ApproveTaskBody(approvedPrompt: prompt))
     }
@@ -129,6 +167,15 @@ final class OrbitBridgeClient: OrbitBridgeProtocol, @unchecked Sendable {
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw OrbitBridgeError.invalidResponse
         }
+    }
+
+    private static func bridgeError(from data: Data, statusCode: Int) -> OrbitBridgeError {
+        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let message = json["error"] as? String,
+           !message.isEmpty {
+            return .serverMessage(message)
+        }
+        return .httpStatus(statusCode)
     }
 
     private static func bridgeError(

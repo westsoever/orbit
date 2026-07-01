@@ -8,6 +8,9 @@ struct InsightSidebarView: View {
             VStack(alignment: .leading, spacing: 16) {
                 ProductivityScoreGauge(score: model.insightStore.productivityScore.value)
 
+                SectionHeader(title: "Task board")
+                KanbanBoardView()
+
                 SectionHeader(title: "Recommended Tasks")
                 TaskCardList()
 

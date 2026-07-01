@@ -1,7 +1,8 @@
-"""Read context — from a GitHub daily report or a local file."""
+"""Read context — from capture DB, GitHub daily report, or a local file."""
 from __future__ import annotations
 import shutil
 import subprocess
+import sqlite3
 from datetime import date as _date
 from pathlib import Path
 
@@ -9,6 +10,17 @@ _GITHUB_REPO = "westsoever/cos"
 _GITHUB_BRANCH = "main"
 _DAILY_REPORT_DIR = "06-wiki/daily_report"
 LOCAL_DEFAULT = Path("~/.orbit/context.md").expanduser()
+
+
+def read_capture(
+    con: sqlite3.Connection,
+    *,
+    hours: int = 4,
+    user_id: str | None = None,
+) -> tuple[str, str]:
+    from orbit.check.capture_context import read_capture_context
+
+    return read_capture_context(con, hours=hours, user_id=user_id)
 
 
 def read_github(
@@ -54,14 +66,20 @@ def read_local(path: str | Path | None = None) -> str:
 
 def read_context(
     local_path: str | Path | None = None,
-    source: str = "github",
+    source: str = "capture",
     date: str | None = None,
+    *,
+    con: sqlite3.Connection | None = None,
+    capture_hours: int = 4,
 ) -> tuple[str, str]:
     """Return (context_text, source_label).
 
-    source: "github" | "local"
-    Falls back to local if GitHub fetch fails and local_path/default exists.
+    source: "capture" | "github" | "local"
     """
+    if source == "capture":
+        if con is None:
+            raise ValueError("database connection required for capture source")
+        return read_capture(con, hours=capture_hours)
     if source == "github":
         try:
             text = read_github(date=date)

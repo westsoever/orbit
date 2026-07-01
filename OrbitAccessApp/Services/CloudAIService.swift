@@ -82,6 +82,34 @@ final class CloudAIService: @unchecked Sendable {
             }
     }
 
+    func saveBYOKKey(_ key: String) throws {
+        try OrbitPaths.ensureOrbitDirectoryExists()
+        var lines: [String] = []
+        var replaced = false
+        if FileManager.default.fileExists(atPath: OrbitPaths.envFileURL.path),
+           let text = try? String(contentsOf: OrbitPaths.envFileURL, encoding: .utf8) {
+            for line in text.split(separator: "\n", omittingEmptySubsequences: false) {
+                let trimmed = String(line).trimmingCharacters(in: .whitespaces)
+                if trimmed.hasPrefix("OPENROUTER_API_KEY=") {
+                    lines.append("OPENROUTER_API_KEY=\(key)")
+                    replaced = true
+                } else {
+                    lines.append(String(line))
+                }
+            }
+        }
+        if !replaced {
+            lines.append("OPENROUTER_API_KEY=\(key)")
+        }
+        let body = lines.joined(separator: "\n")
+        let output = body.hasSuffix("\n") ? body : body + "\n"
+        try output.write(to: OrbitPaths.envFileURL, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o600],
+            ofItemAtPath: OrbitPaths.envFileURL.path
+        )
+    }
+
     func hasLocalLLMConfigured() -> Bool {
         LLMPreferencesService.shared.isLocalConfigured()
     }

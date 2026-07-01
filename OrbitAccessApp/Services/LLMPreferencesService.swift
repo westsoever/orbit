@@ -3,6 +3,7 @@ import Foundation
 enum AIMode: String, CaseIterable, Identifiable {
     case cloud
     case local
+    case byok
 
     var id: String { rawValue }
 
@@ -10,6 +11,7 @@ enum AIMode: String, CaseIterable, Identifiable {
         switch self {
         case .cloud: return "Cloud AI"
         case .local: return "Local model (Ollama)"
+        case .byok: return "Your API key"
         }
     }
 
@@ -19,6 +21,8 @@ enum AIMode: String, CaseIterable, Identifiable {
             return "Use Orbit's cloud service (~40 messages/day on the shared plan)."
         case .local:
             return "Run a model on this Mac via Ollama. Nothing leaves your machine."
+        case .byok:
+            return "Bring your own OpenRouter API key. Stored locally in ~/.orbit/.env."
         }
     }
 }
@@ -44,7 +48,11 @@ final class LLMPreferencesService: @unchecked Sendable {
             return localModelName() != nil ? .local : nil
         case "cloud":
             return CloudAIService.shared.isEnabled() ? .cloud : nil
+        case "byok":
+            return CloudAIService.shared.hasBYOK() ? .byok : nil
         default:
+            if CloudAIService.shared.hasBYOK() { return .byok }
+            if CloudAIService.shared.isEnabled() { return .cloud }
             return nil
         }
     }
@@ -81,6 +89,34 @@ final class LLMPreferencesService: @unchecked Sendable {
             $0[localModelKey] = nil
             $0[localBaseURLKey] = nil
         }
+    }
+
+    func configureBYOK(apiKey: String) throws {
+        let trimmed = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 8 else {
+            throw LLMPreferencesError.invalidAPIKey
+        }
+        try CloudAIService.shared.disable()
+        try CloudAIService.shared.saveBYOKKey(trimmed)
+        try writeEnv {
+            $0[providerKey] = "byok"
+            $0[localModelKey] = nil
+            $0[localBaseURLKey] = nil
+        }
+    }
+
+    func scaffoldEnvExampleIfNeeded() {
+        let exampleURL = OrbitPaths.orbitDirectory.appendingPathComponent(".env.example")
+        guard !FileManager.default.fileExists(atPath: exampleURL.path) else { return }
+        let body = """
+        # Orbit AI configuration (copy to .env and fill in values)
+        # OPENROUTER_API_KEY=sk-or-v1-your-key-here
+        # ORBIT_LLM_PROVIDER=byok
+        # ORBIT_LLM_PROVIDER=local
+        # ORBIT_LOCAL_LLM_MODEL=llama3.1
+        """
+        try? OrbitPaths.ensureOrbitDirectoryExists()
+        try? body.write(to: exampleURL, atomically: true, encoding: .utf8)
     }
 
     func disableAll() throws {
@@ -179,11 +215,14 @@ final class LLMPreferencesService: @unchecked Sendable {
 
 enum LLMPreferencesError: LocalizedError {
     case emptyModelName
+    case invalidAPIKey
 
     var errorDescription: String? {
         switch self {
         case .emptyModelName:
             return "Enter the Ollama model name (for example llama3.1)."
+        case .invalidAPIKey:
+            return "Enter a valid OpenRouter API key (starts with sk-or-)."
         }
     }
 }

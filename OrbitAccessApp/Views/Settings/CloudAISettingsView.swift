@@ -5,6 +5,7 @@ struct CloudAISettingsView: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var selectedMode: AIMode = .cloud
     @State private var localModelName = LLMPreferencesService.defaultLocalModel
+    @State private var apiKey = ""
     @State private var isSaving = false
     @State private var errorMessage: String?
 
@@ -24,10 +25,13 @@ struct CloudAISettingsView: View {
                 .font(.caption)
                 .foregroundStyle(Color.orbitSecondaryText(for: colorScheme))
 
-            if selectedMode == .cloud {
+            switch selectedMode {
+            case .cloud:
                 cloudSection
-            } else {
+            case .local:
                 localSection
+            case .byok:
+                byokSection
             }
 
             HStack(spacing: 12) {
@@ -40,7 +44,7 @@ struct CloudAISettingsView: View {
                     }
                 }
                 .buttonStyle(OrbitFlatButtonStyle(variant: .primary))
-                .disabled(isSaving || (selectedMode == .local && localModelName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
+                .disabled(isSaving || !canSave)
 
                 if model.hasConfiguredAI {
                     Button("Turn off AI") {
@@ -65,17 +69,33 @@ struct CloudAISettingsView: View {
 
             Divider()
 
+            BrowserSetupView()
+
+            Divider()
+
             AccountSettingsView()
         }
         .padding()
         .frame(maxWidth: 420, alignment: .leading)
         .onAppear {
+            LLMPreferencesService.shared.scaffoldEnvExampleIfNeeded()
             if let mode = model.aiMode {
                 selectedMode = mode
             }
             if let modelName = model.localModelName {
                 localModelName = modelName
             }
+        }
+    }
+
+    private var canSave: Bool {
+        switch selectedMode {
+        case .cloud:
+            return true
+        case .local:
+            return !localModelName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case .byok:
+            return apiKey.trimmingCharacters(in: .whitespacesAndNewlines).count >= 8
         }
     }
 
@@ -108,6 +128,27 @@ struct CloudAISettingsView: View {
         }
     }
 
+    private var byokSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("OpenRouter API key")
+                .font(.caption.weight(.medium))
+            SecureField("sk-or-v1-…", text: $apiKey)
+                .textFieldStyle(.plain)
+                .font(.callout)
+                .padding(10)
+                .background(Color.clear, in: RoundedRectangle(cornerRadius: OrbitShape.radiusControl))
+                .orbitHairlineBorder(cornerRadius: OrbitShape.radiusControl, colorScheme: colorScheme)
+            Text("Get a key at openrouter.ai. Stored only in ~/.orbit/.env on this Mac.")
+                .font(.caption2)
+                .foregroundStyle(Color.orbitSecondaryText(for: colorScheme))
+            if model.cloudAI.hasBYOK() {
+                Text("An API key is already saved. Enter a new one to replace it.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
     @MainActor
     private func saveSelection() {
         isSaving = true
@@ -120,6 +161,9 @@ struct CloudAISettingsView: View {
                     try await LLMPreferencesService.shared.configureCloud()
                 case .local:
                     try LLMPreferencesService.shared.configureLocal(model: localModelName)
+                case .byok:
+                    try LLMPreferencesService.shared.configureBYOK(apiKey: apiKey)
+                    apiKey = ""
                 }
                 model.refreshAIState()
             } catch {

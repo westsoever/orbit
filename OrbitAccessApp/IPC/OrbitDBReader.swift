@@ -299,6 +299,38 @@ final class OrbitDBReader: @unchecked Sendable {
         }
     }
 
+    func fetchKanbanTasksToday(reportDate: String? = nil) throws -> [TaskLogEntry] {
+        let date = reportDate ?? Self.localTodayISO()
+        let filter = userEventFilter(column: "user_id")
+        return try read { db in
+            let rows = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT id, timestamp, title, description, original_prompt, approved_prompt,
+                           agent_type, status, exit_code
+                    FROM task_log
+                    WHERE date(timestamp) = ?\(filter.sql)
+                    ORDER BY id DESC
+                    LIMIT 100
+                    """,
+                arguments: [date] + filter.arguments
+            )
+            return rows.map { row in
+                TaskLogEntry(
+                    id: row["id"],
+                    timestamp: row["timestamp"] ?? "",
+                    title: row["title"],
+                    description: row["description"],
+                    originalPrompt: row["original_prompt"],
+                    approvedPrompt: row["approved_prompt"],
+                    agentType: row["agent_type"],
+                    status: row["status"] ?? "detected",
+                    exitCode: row["exit_code"]
+                )
+            }
+        }
+    }
+
     private func fetchPendingTasksTodayRows(
         includeDescription: Bool,
         reportDate: String,

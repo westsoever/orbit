@@ -2,16 +2,15 @@
 
 Visual reference for mentor review. Interactive version: open `orbit-context-routing.canvas.tsx` in Cursor Canvases.
 
-## Key insight (Phase 1 today)
+## Key insight (Phase 2 beta)
 
-**Capture** and **task detection** are two parallel pipelines:
+**Capture** feeds **task detection** by default. Legacy sources (GitHub report, local `.md`) remain available via flags.
 
-| Pipeline | Command | Input | Output |
-|----------|---------|-------|--------|
+| Pipeline | Command / API | Input | Output |
+|----------|---------------|-------|--------|
 | Perception | `orbit start` / `orbit start --detach` | App focus → Accessibility API | `~/.orbit/orbit.db` (events + atoms) |
-| Cognition | `orbit check` | GitHub daily report or local `.md` | `task_log` + `mvp-output/*.md` |
-
-`orbit check` does **not** read captured atoms yet. Phase 2 wires hybrid search into the orchestrator.
+| Cognition | `orbit check` (default `--source capture`) | Recent atoms from `orbit.db` | `task_log` + `~/.orbit/output/*.md` |
+| App UI | `POST /api/tasks/detect` | Last N hours of capture | `task_log` + Kanban board |
 
 ## Routing diagram
 
@@ -20,24 +19,23 @@ Source file: [`diagrams/context-routing.mmd`](diagrams/context-routing.mmd)
 ```mermaid
 flowchart TB
   subgraph Perception["Perception — orbit start"]
-    Apps["macOS apps"] --> Listener["Focus listener<br/>NSWorkspace · 1.5s debounce"]
-    Listener --> Worker["Capture worker<br/>AX · metadata · OCR fallback"]
+    Apps["macOS apps"] --> Listener["Focus listener"]
+    Listener --> Worker["Capture worker"]
     Browser["Browser bridge Tier 2"] --> DB[("~/.orbit/orbit.db")]
-    FS["FSEvents Tier 3 opt-in"] --> DB
     Worker --> DB
-    DB --> Embed["Embed worker optional"]
-    Embed --> Search["Hybrid search BM25 + vec"]
+    DB --> Search["Hybrid search BM25 + vec"]
   end
 
-  subgraph Cognition["Cognition — orbit check"]
-    Report["Daily report GitHub"] --> Check["orbit check LLM"]
+  subgraph Cognition["Cognition — orbit check / Scan capture"]
+    DB --> CaptureCtx["capture_context.py"]
+    CaptureCtx --> Check["LLM task detector"]
     Check --> Tasks["task_log"]
-    Tasks --> Approve["Approval gate CLI"]
-    Approve --> Dispatch["OpenRouter"]
-    Dispatch --> Output["mvp-output/*.md"]
+    Tasks --> Approve["Approval gate"]
+    Approve --> Dispatch["LLM dispatch"]
+    Dispatch --> Output["~/.orbit/output/*.md"]
   end
 
-  Search -.->|"Phase 2 not wired"| Check
+  Search --> Chat["/api/chat"]
 ```
 
 ## Capture tiers
@@ -54,7 +52,7 @@ Policy: `~/.orbit/policy.json`
 
 ## Orbit Access App
 
-Native SwiftUI client (`OrbitAccessApp/`). Reads SQLite for history; hybrid search, chat, and task writes go through the daemon bridge on `127.0.0.1:8765`. Sidebar **CAPTURE** section shows daemon status and **Start** / **Stop** controls (`DaemonManager` → `orbit start --detach` / `orbit stop`). Launch: `bash scripts/run_orbit_access_app.sh`.
+Native SwiftUI client (`OrbitAccessApp/`). First-run wizard covers Gatekeeper and Accessibility. Sign-in / sign-up gate capture. Kanban task board with **Scan capture** triggers `/api/tasks/detect`.
 
 ## Design constraints
 
@@ -66,5 +64,5 @@ Native SwiftUI client (`OrbitAccessApp/`). Reads SQLite for history; hybrid sear
 
 ## Roadmap hooks
 
-- **Phase 2:** Retrieval — search over `orbit.db` feeds orchestrator prompt; Kanban UI
 - **Phase 3:** MCP agents in sandbox after plan approval
+- **Future:** SQLCipher encryption, calendar/email/audio sources

@@ -140,6 +140,21 @@ status "Smoke-testing DB open…"
 status "Copying docs into orbit-core…"
 cp -R "$SOURCE_ROOT/docs/gdpr/." "$ORBIT_CORE/docs/gdpr/"
 
+status "Bundling browser extension…"
+if [ -d "$SOURCE_ROOT/orbit/browser-extension" ]; then
+  cp -R "$SOURCE_ROOT/orbit/browser-extension" "$RESOURCES/browser-extension"
+fi
+
+status "Writing .env.example scaffold…"
+mkdir -p "$ORBIT_CORE"
+cat >"$ORBIT_CORE/.env.example" <<'ENVEXAMPLE'
+# Orbit AI configuration — copy lines to ~/.orbit/.env
+# OPENROUTER_API_KEY=sk-or-v1-your-key-here
+# ORBIT_LLM_PROVIDER=byok
+# ORBIT_LLM_PROVIDER=local
+# ORBIT_LOCAL_LLM_MODEL=llama3.1
+ENVEXAMPLE
+
 status "Writing CLI wrapper…"
 cat >"$CLI_WRAPPER" <<'WRAPPER'
 #!/usr/bin/env bash

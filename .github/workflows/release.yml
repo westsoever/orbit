@@ -19,20 +19,29 @@ jobs:
         run: brew install python@3.13
 
       - name: Build Orbit.app
+        env:
+          ORBIT_RELAY_URL: ${{ secrets.ORBIT_RELAY_URL }}
         run: bash scripts/build-app-bundle.sh --output Orbit.app
 
       - name: Create release zip
         run: ditto -c -k --sequesterResource --keepParent Orbit.app Orbit-darwin.zip
 
+      - name: Create DMG
+        run: bash scripts/create-dmg.sh Orbit.app Orbit.dmg
+
       - name: Upload to GitHub Release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
-          files: Orbit-darwin.zip
+          files: |
+            Orbit-darwin.zip
+            Orbit.dmg
 
       - name: Upload workflow artifact
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: Orbit-darwin
-          path: Orbit-darwin.zip
+          path: |
+            Orbit-darwin.zip
+            Orbit.dmg

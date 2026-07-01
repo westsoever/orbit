@@ -13,8 +13,10 @@ def main() -> None:
     parser.add_argument("action", nargs="?", choices=["skipped"], default=None,
                         help="'skipped' to review today's skipped tasks")
     parser.add_argument("--context", default=None, help="Path to local context.md (used with --source local or as fallback)")
-    parser.add_argument("--source", choices=["github", "local"], default="github",
-                        help="Context source: github (default) or local")
+    parser.add_argument("--source", choices=["capture", "github", "local"], default="capture",
+                        help="Context source: capture (default), github, or local")
+    parser.add_argument("--capture-hours", type=int, default=4,
+                        help="Hours of captured context when --source capture (default: 4)")
     parser.add_argument("--date", default=None, help="Report date YYYY-MM-DD (default: today)")
     parser.add_argument("--db", default="~/.orbit/orbit.db", help="SQLite DB path")
     parser.add_argument("--dry-run", action="store_true", help="Detect and print tasks; skip notification and dispatch")
@@ -58,6 +60,8 @@ def main() -> None:
                     local_path=args.context,
                     source=args.source,
                     date=args.date,
+                    con=con,
+                    capture_hours=args.capture_hours,
                 )
                 print(f"Context: {source_label}")
             except FileNotFoundError as e:

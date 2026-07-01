@@ -17,7 +17,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Callable
 from urllib.parse import parse_qs, urlparse
 
-from orbit.check.log import get_pending_today, migrate, update_status
+from orbit.check.log import get_pending_today, get_all_tasks_today, insert_task, migrate, update_status
 from orbit.search.types import Hit
 from orbit.storage.session import get_active_user_id
 
@@ -121,6 +121,9 @@ class _BridgeHandler(BaseHTTPRequestHandler):
         if path == "/api/shutdown":
             self._handle_shutdown()
             return
+        if path == "/api/tasks/detect":
+            self._handle_tasks_detect()
+            return
         match = _TASK_APPROVE_RE.match(path)
         if match:
             self._handle_task_approve(int(match.group(1)))
@@ -141,6 +144,9 @@ class _BridgeHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/tasks/pending":
             self._handle_tasks_pending()
+            return
+        if path == "/api/tasks/kanban":
+            self._handle_tasks_kanban()
             return
         if path == "/api/search":
             self._handle_search()
@@ -179,6 +185,64 @@ class _BridgeHandler(BaseHTTPRequestHandler):
         con, lock = db_ref
         tasks = [_task_to_dict(log_id, task) for log_id, task in get_pending_today(con, lock)]
         _send_json(self, 200, tasks)
+
+    def _handle_tasks_kanban(self) -> None:
+        db_ref = _require_db(self, self.server)
+        if db_ref is None:
+            return
+        con, lock = db_ref
+        rows = get_all_tasks_today(con, lock)
+        _send_json(self, 200, {"tasks": rows})
+
+    def _handle_tasks_detect(self) -> None:
+        db_ref = _require_db(self, self.server)
+        if db_ref is None:
+            return
+        payload = _read_json_body(self) or {}
+        hours = 4
+        refresh = False
+        if isinstance(payload.get("hours"), int):
+            hours = payload["hours"]
+        if payload.get("refresh") is True:
+            refresh = True
+
+        con, lock = db_ref
+        if not refresh:
+            cached = get_pending_today(con, lock)
+            if cached:
+                tasks = [_task_to_dict(log_id, task) for log_id, task in cached]
+                _send_json(self, 200, {"tasks": tasks, "source": "cached", "count": len(tasks)})
+                return
+
+        from orbit.check.context import read_context
+        from orbit.check.detector import detect_tasks
+
+        try:
+            context_text, source_label = read_context(source="capture", con=con, capture_hours=hours)
+        except (FileNotFoundError, ValueError) as exc:
+            _send_json(self, 404, {"error": str(exc)})
+            return
+
+        try:
+            detected = detect_tasks(context_text)
+        except Exception as exc:
+            logger.exception("task detection failed")
+            _send_json(self, 503, {"error": str(exc)})
+            return
+
+        if not detected:
+            _send_json(self, 200, {"tasks": [], "source": source_label, "count": 0})
+            return
+
+        tasks_out = []
+        for task in detected:
+            log_id = insert_task(con, lock, task)
+            tasks_out.append(_task_to_dict(log_id, task))
+        _send_json(
+            self,
+            200,
+            {"tasks": tasks_out, "source": source_label, "count": len(tasks_out)},
+        )
 
     def _handle_task_approve(self, task_id: int) -> None:
         db_ref = _require_db(self, self.server)
