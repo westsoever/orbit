@@ -20,7 +20,11 @@ final class OrbitDBReader: @unchecked Sendable {
     var isReady: Bool { pool != nil }
 
     private var activeUserId: String? {
-        UserSessionService.shared.currentSession?.userId
+        guard let data = try? Data(contentsOf: OrbitPaths.sessionURL),
+              let session = try? JSONDecoder().decode(OrbitUserSession.self, from: data) else {
+            return nil
+        }
+        return session.userId
     }
 
     private func userEventFilter(column: String = "e.user_id") -> (sql: String, arguments: StatementArguments) {

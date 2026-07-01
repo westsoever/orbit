@@ -66,7 +66,8 @@ struct KanbanBoardView: View {
                 Text("—")
                     .font(.caption2)
                     .foregroundStyle(Color.orbitSecondaryText(for: colorScheme))
-                    .frame(width: 200, minHeight: 60, alignment: .topLeading)
+                    .frame(width: 200, alignment: .topLeading)
+                    .frame(minHeight: 60)
             } else {
                 VStack(spacing: 8) {
                     ForEach(tasks) { task in

@@ -109,7 +109,7 @@ final class UserSessionService {
                 try db.execute(sql: "PRAGMA foreign_keys=ON;")
             }
             let queue = try DatabaseQueue(path: dbURL.path, configuration: config)
-            try queue.write { db in
+            try await queue.write { db in
                 let existing = try Int.fetchOne(
                     db,
                     sql: "SELECT COUNT(*) FROM users WHERE email = ?",
@@ -155,7 +155,7 @@ final class UserSessionService {
         var config = Configuration()
         config.readonly = true
         let queue = try DatabaseQueue(path: dbURL.path, configuration: config)
-        let user: OrbitUser? = try queue.read { db in
+        let user: OrbitUser? = try await queue.read { db in
             try OrbitUser.fetchOne(db, sql: "SELECT * FROM users WHERE email = ?", arguments: [trimmedEmail])
         }
 
