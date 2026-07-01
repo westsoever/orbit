@@ -42,6 +42,9 @@ done
 
 [[ -n "$ORBIT_OUTPUT" ]] || usage
 
+# Resolve to absolute path — swift build cds into OrbitAccessApp later.
+ORBIT_OUTPUT="$(cd "$(dirname "$ORBIT_OUTPUT")" && pwd)/$(basename "$ORBIT_OUTPUT")"
+
 if [[ "$(uname -s)" != "Darwin" ]]; then
   error "Orbit.app builds are macOS-only."
 fi
