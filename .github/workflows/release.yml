@@ -24,7 +24,7 @@ jobs:
         run: bash scripts/build-app-bundle.sh --output Orbit.app
 
       - name: Create release zip
-        run: ditto -c -k --sequesterResource --keepParent Orbit.app Orbit-darwin.zip
+        run: ditto -c -k --keepParent Orbit.app Orbit-darwin.zip
 
       - name: Create DMG
         run: bash scripts/create-dmg.sh Orbit.app Orbit.dmg
