@@ -42,6 +42,9 @@ done
 
 [[ -n "$ORBIT_OUTPUT" ]] || usage
 
+# Resolve to absolute path — swift build cds into OrbitAccessApp later.
+ORBIT_OUTPUT="$(cd "$(dirname "$ORBIT_OUTPUT")" && pwd)/$(basename "$ORBIT_OUTPUT")"
+
 if [[ "$(uname -s)" != "Darwin" ]]; then
   error "Orbit.app builds are macOS-only."
 fi
@@ -140,6 +143,21 @@ status "Smoke-testing DB open…"
 status "Copying docs into orbit-core…"
 cp -R "$SOURCE_ROOT/docs/gdpr/." "$ORBIT_CORE/docs/gdpr/"
 
+status "Bundling browser extension…"
+if [ -d "$SOURCE_ROOT/orbit/browser-extension" ]; then
+  cp -R "$SOURCE_ROOT/orbit/browser-extension" "$RESOURCES/browser-extension"
+fi
+
+status "Writing .env.example scaffold…"
+mkdir -p "$ORBIT_CORE"
+cat >"$ORBIT_CORE/.env.example" <<'ENVEXAMPLE'
+# Orbit AI configuration — copy lines to ~/.orbit/.env
+# OPENROUTER_API_KEY=sk-or-v1-your-key-here
+# ORBIT_LLM_PROVIDER=byok
+# ORBIT_LLM_PROVIDER=local
+# ORBIT_LOCAL_LLM_MODEL=llama3.1
+ENVEXAMPLE
+
 status "Writing CLI wrapper…"
 cat >"$CLI_WRAPPER" <<'WRAPPER'
 #!/usr/bin/env bash
@@ -152,10 +170,11 @@ chmod +x "$CLI_WRAPPER"
 SWIFT_BIN=""
 if [[ "$ORBIT_SKIP_SWIFT" != "1" ]]; then
   cd "$APP_DIR"
-  if ! swift build -c release 2>&1; then
+  SWIFT_FLAGS=(-Xswiftc -strict-concurrency=minimal)
+  if ! swift build -c release "${SWIFT_FLAGS[@]}" 2>&1; then
     status "Release build failed; falling back to debug…"
     SWIFT_CONFIG="debug"
-    swift build -c debug 2>&1
+    swift build -c debug "${SWIFT_FLAGS[@]}" 2>&1
   fi
   SWIFT_BIN="$APP_DIR/.build/$SWIFT_CONFIG/OrbitAccessApp"
   [[ -f "$SWIFT_BIN" ]] || error "Swift binary not found at $SWIFT_BIN"

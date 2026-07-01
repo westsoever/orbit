@@ -4,7 +4,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
-OUTPUT_DIR = Path("/Users/lyo/orbit/mvp-output")
+OUTPUT_DIR = Path("~/.orbit/output").expanduser()
 
 _SYSTEM = (
     "You are an autonomous agent executing a task on behalf of the user. "
@@ -22,38 +22,20 @@ def _slugify(title: str) -> str:
 
 
 def dispatch(prompt: str, title: str = "task") -> int:
-    import openai
-    from .llm import _load_api_key, _BASE_URL, _MODEL
-
-    client = openai.OpenAI(api_key=_load_api_key(), base_url=_BASE_URL)
+    from .llm import complete
 
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d-%H%M")
     filename = f"{ts}-{_slugify(title)}.md"
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     out_path = OUTPUT_DIR / filename
 
-    print(f"\nRunning via {_MODEL} (OpenRouter)...\n" + "─" * 58)
+    print(f"\nRunning task agent...\n" + "─" * 58)
 
     try:
-        response = client.chat.completions.create(
-            model=_MODEL,
-            max_tokens=4096,
-            stream=True,
-            messages=[
-                {"role": "system", "content": _SYSTEM},
-                {"role": "user", "content": prompt},
-            ],
-        )
-        chunks = []
-        for chunk in response:
-            delta = chunk.choices[0].delta.content
-            if delta:
-                print(delta, end="", flush=True)
-                chunks.append(delta)
-
+        content = complete(_SYSTEM, prompt)
+        print(content)
         print("\n" + "─" * 58)
 
-        content = "".join(chunks)
         out_path.write_text(f"# {title}\n\n{content}\n", encoding="utf-8")
         print(f"\nSaved → {out_path}")
         return 0

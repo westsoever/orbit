@@ -12,6 +12,7 @@ struct SignUpView: View {
     @State private var errorMessage: String?
 
     let onComplete: () -> Void
+    var onSwitchToSignIn: (() -> Void)?
 
     var body: some View {
         VStack(spacing: 24) {
@@ -78,6 +79,14 @@ struct SignUpView: View {
             .buttonStyle(.borderedProminent)
             .disabled(!canSubmit || isSubmitting)
             .frame(maxWidth: 360)
+
+            if let onSwitchToSignIn {
+                Button("Already have an account? Sign in") {
+                    onSwitchToSignIn()
+                }
+                .font(.caption)
+                .buttonStyle(.link)
+            }
         }
         .padding(32)
     }

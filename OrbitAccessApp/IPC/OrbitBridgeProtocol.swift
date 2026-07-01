@@ -5,10 +5,17 @@ protocol OrbitBridgeProtocol: Sendable {
     func checkStatus() async -> Bool
     func requestShutdown() async throws
     func fetchPendingTasks() async -> [TaskLogEntry]
+    func fetchKanbanTasks() async -> [TaskLogEntry]
+    func detectTasks(refresh: Bool) async throws -> TaskDetectResult
     func approve(id: Int64, prompt: String) async throws
     func skip(id: Int64) async throws
     func search(_ query: String, limit: Int) async -> [SearchHit]
     func chatStream(_ query: String) -> AsyncThrowingStream<ChatChunk, Error>
+}
+
+struct TaskDetectResult: Sendable {
+    let tasks: [TaskLogEntry]
+    let message: String
 }
 
 enum OrbitBridgeError: LocalizedError {
@@ -76,4 +83,19 @@ struct ApproveTaskBody: Encodable {
     enum CodingKeys: String, CodingKey {
         case approvedPrompt = "approved_prompt"
     }
+}
+
+struct KanbanTasksResponse: Decodable, Sendable {
+    let tasks: [TaskLogEntry]
+}
+
+struct TaskDetectResponse: Decodable, Sendable {
+    let tasks: [TaskLogEntry]
+    let source: String?
+    let count: Int?
+}
+
+struct TaskDetectRequest: Encodable, Sendable {
+    let refresh: Bool
+    let hours: Int
 }

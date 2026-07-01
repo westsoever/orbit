@@ -132,6 +132,7 @@ struct ChatInputBar: View {
             switch model.aiMode {
             case .cloud: return "Send message via Cloud AI"
             case .local: return "Send message via local Ollama model"
+            case .byok: return "Send message via your API key"
             case nil: return "Send message (AI or keyword fallback)"
             }
         }

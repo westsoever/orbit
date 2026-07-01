@@ -107,6 +107,8 @@ struct MainChatView: View {
                         return "Local Ollama model: \(name)."
                     }
                     return "Local Ollama model is configured."
+                case .byok:
+                    return "Using your OpenRouter API key."
                 }
             }
             if model.cloudAI.hasBYOK() {

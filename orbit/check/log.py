@@ -86,6 +86,66 @@ def get_skipped_today(
     ]
 
 
+def get_tasks_by_status(
+    con: sqlite3.Connection,
+    lock: threading.Lock,
+    status: str,
+    *,
+    report_date: str | None = None,
+    user_id: str | None = None,
+    limit: int = 50,
+) -> list[tuple[int, Task, str]]:
+    """Return (log_id, Task, status) rows for a given status (today by default)."""
+    d = report_date or date.today().isoformat()
+    uid = user_id if user_id is not None else get_active_user_id()
+    extra, params = _user_filter(uid)
+    with lock:
+        rows = con.execute(
+            "SELECT id, title, description, original_prompt, agent_type, status"
+            " FROM task_log"
+            " WHERE status = ?"
+            "   AND date(timestamp) = ?"
+            + extra
+            + " ORDER BY id DESC LIMIT ?",
+            [status, d, *params, limit],
+        ).fetchall()
+    result = []
+    for row in rows:
+        task = Task(
+            title=row["title"],
+            description=row["description"] or "",
+            suggested_prompt=row["original_prompt"] or "",
+            agent_type=row["agent_type"] or "admin",
+            confidence=1.0,
+        )
+        result.append((row["id"], task, row["status"]))
+    return result
+
+
+def get_all_tasks_today(
+    con: sqlite3.Connection,
+    lock: threading.Lock,
+    *,
+    report_date: str | None = None,
+    user_id: str | None = None,
+    limit: int = 100,
+) -> list[dict]:
+    """Return task_log rows for Kanban (all statuses from today)."""
+    d = report_date or date.today().isoformat()
+    uid = user_id if user_id is not None else get_active_user_id()
+    extra, params = _user_filter(uid)
+    with lock:
+        rows = con.execute(
+            "SELECT id, title, description, original_prompt, agent_type, status, timestamp"
+            " FROM task_log"
+            " WHERE date(timestamp) = ?"
+            + extra
+            + " ORDER BY id DESC LIMIT ?",
+            [d, *params, limit],
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
 def get_pending_today(
     con: sqlite3.Connection,
     lock: threading.Lock,

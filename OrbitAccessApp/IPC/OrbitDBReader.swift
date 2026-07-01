@@ -20,12 +20,37 @@ final class OrbitDBReader: @unchecked Sendable {
     var isReady: Bool { pool != nil }
 
     private var activeUserId: String? {
-        UserSessionService.shared.currentSession?.userId
+        guard let data = try? Data(contentsOf: OrbitPaths.sessionURL),
+              let session = try? JSONDecoder().decode(OrbitUserSession.self, from: data) else {
+            return nil
+        }
+        return session.userId
     }
 
-    private func userEventFilter(column: String = "e.user_id") -> (sql: String, arguments: [DatabaseValueConvertible]) {
-        guard let uid = activeUserId else { return ("", []) }
-        return (" AND \(column) = ?", [uid])
+    private func userEventFilter(column: String = "e.user_id") -> (sql: String, arguments: StatementArguments) {
+        guard let uid = activeUserId else { return ("", StatementArguments()) }
+        return (" AND \(column) = ?", StatementArguments([uid]))
+    }
+
+    private func sqlArguments(_ values: [DatabaseValueConvertible]) -> StatementArguments {
+        var args = StatementArguments()
+        for value in values {
+            args += [value]
+        }
+        return args
+    }
+
+    private func mergedArguments(
+        _ leading: [DatabaseValueConvertible],
+        filter: (sql: String, arguments: StatementArguments),
+        trailing: [DatabaseValueConvertible] = []
+    ) -> StatementArguments {
+        var args = sqlArguments(leading)
+        args += filter.arguments
+        for value in trailing {
+            args += [value]
+        }
+        return args
     }
 
     @MainActor
@@ -68,7 +93,7 @@ final class OrbitDBReader: @unchecked Sendable {
                 WHERE a.id > ? AND length(trim(a.text)) > 10\(filter.sql)
                 ORDER BY a.id DESC
                 LIMIT ?
-                """, arguments: [afterId] + filter.arguments + [limit])
+                """, arguments: mergedArguments([afterId], filter: filter, trailing: [limit]))
             return rows.map { Self.searchHit(from: $0) }
         }
     }
@@ -93,7 +118,7 @@ final class OrbitDBReader: @unchecked Sendable {
                 WHERE length(trim(a.text)) > 10\(filter.sql)
                 ORDER BY a.id DESC
                 LIMIT ?
-                """, arguments: filter.arguments + [limit])
+                """, arguments: mergedArguments([], filter: filter, trailing: [limit]))
             return rows.map { Self.searchHit(from: $0) }
         }
     }
@@ -119,7 +144,7 @@ final class OrbitDBReader: @unchecked Sendable {
                 WHERE atoms_fts MATCH ?\(filter.sql)
                 ORDER BY score
                 LIMIT ?
-                """, arguments: [query] + filter.arguments + [limit])
+                """, arguments: mergedArguments([query], filter: filter, trailing: [limit]))
             return rows.map { row in
                 SearchHit(
                     atomId: row["atom_id"],
@@ -159,7 +184,7 @@ final class OrbitDBReader: @unchecked Sendable {
                 WHERE e.app_name LIKE ?\(filter.sql)
                 ORDER BY e.timestamp DESC
                 LIMIT ?
-                """, arguments: ["%\(appName)%"] + filter.arguments + [limit])
+                """, arguments: mergedArguments(["%\(appName)%"], filter: filter, trailing: [limit]))
             return rows.map { Self.searchHit(from: $0) }
         }
     }
@@ -188,7 +213,7 @@ final class OrbitDBReader: @unchecked Sendable {
                       AND strftime('%H', e.timestamp) = ?\(filter.sql)
                     ORDER BY e.timestamp DESC
                     LIMIT ?
-                    """, arguments: [normalized] + filter.arguments + [limit])
+                    """, arguments: mergedArguments([normalized], filter: filter, trailing: [limit]))
             } else {
                 rows = try Row.fetchAll(db, sql: """
                     SELECT
@@ -207,7 +232,7 @@ final class OrbitDBReader: @unchecked Sendable {
                     WHERE date(e.timestamp) = date('now')\(filter.sql)
                     ORDER BY e.timestamp DESC
                     LIMIT ?
-                    """, arguments: filter.arguments + [limit])
+                    """, arguments: mergedArguments([], filter: filter, trailing: [limit]))
             }
             return rows.map { Self.searchHit(from: $0) }
         }
@@ -299,10 +324,42 @@ final class OrbitDBReader: @unchecked Sendable {
         }
     }
 
+    func fetchKanbanTasksToday(reportDate: String? = nil) throws -> [TaskLogEntry] {
+        let date = reportDate ?? Self.localTodayISO()
+        let filter = userEventFilter(column: "user_id")
+        return try read { db in
+            let rows = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT id, timestamp, title, description, original_prompt, approved_prompt,
+                           agent_type, status, exit_code
+                    FROM task_log
+                    WHERE date(timestamp) = ?\(filter.sql)
+                    ORDER BY id DESC
+                    LIMIT 100
+                    """,
+                arguments: mergedArguments([date], filter: filter)
+            )
+            return rows.map { row in
+                TaskLogEntry(
+                    id: row["id"],
+                    timestamp: row["timestamp"] ?? "",
+                    title: row["title"],
+                    description: row["description"],
+                    originalPrompt: row["original_prompt"],
+                    approvedPrompt: row["approved_prompt"],
+                    agentType: row["agent_type"],
+                    status: row["status"] ?? "detected",
+                    exitCode: row["exit_code"]
+                )
+            }
+        }
+    }
+
     private func fetchPendingTasksTodayRows(
         includeDescription: Bool,
         reportDate: String,
-        userFilter: (sql: String, arguments: [DatabaseValueConvertible])
+        userFilter: (sql: String, arguments: StatementArguments)
     ) throws -> [TaskLogEntry] {
         try read { db in
             let sql: String
@@ -319,7 +376,11 @@ final class OrbitDBReader: @unchecked Sendable {
                     WHERE status = 'detected' AND date(timestamp) = ?\(userFilter.sql)
                     """
             }
-            let rows = try Row.fetchAll(db, sql: sql, arguments: [reportDate] + userFilter.arguments)
+            let rows = try Row.fetchAll(
+                db,
+                sql: sql,
+                arguments: mergedArguments([reportDate], filter: userFilter)
+            )
             return rows.map { row in
                 TaskLogEntry(
                     id: row["id"],

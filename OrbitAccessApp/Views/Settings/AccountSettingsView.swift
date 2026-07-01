@@ -30,6 +30,9 @@ struct AccountSettingsView: View {
             Text("Signing out stops capture and clears your session. Your context data remains on this Mac.")
                 .font(.caption)
                 .foregroundStyle(Color.orbitSecondaryText(for: colorScheme))
+
+            Link("Report a problem", destination: URL(string: "https://github.com/westsoever/orbit/issues/new")!)
+                .font(.caption)
         }
         .padding()
         .frame(maxWidth: 360, alignment: .leading)

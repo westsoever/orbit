@@ -9,9 +9,9 @@ Manual compatibility reference for Orbit tiered capture (`plans/03-universal-cap
 | VS Code | `com.microsoft.VSCode` | 1+ | ✓ | Electron depth 24 |
 | Slack | `com.slack.*` | 1+ | ✓ | Electron depth 24 |
 | Dia | `company.thebrowser.dia` | 2 | ✓ | AX empty by default; use browser extension or `chrome://accessibility` |
-| Chrome | `com.google.Chrome` | 1+ or 2 | TBD | Enable renderer accessibility or install Orbit browser companion |
-| Arc | `company.thebrowser.Browser` | 1+ or 2 | TBD | Same as Chromium |
-| Safari | `com.apple.Safari` | 1+ or 2 | TBD | AX or extension |
+| Chrome | `com.google.Chrome` | 1+ or 2 | ✓ with setup | Load bundled extension (Settings → Browser capture) + optional `chrome://accessibility/` |
+| Arc | `company.thebrowser.Browser` | 1+ or 2 | ✓ with setup | Same as Chrome — extension path in Orbit Settings |
+| Safari | `com.apple.Safari` | 1+ | partial | Native AX for many pages; extension not supported — use Notes/Terminal for smoke tests |
 | 1Password | `com.1password.*` | excluded | — | Default exclusion list |
 | Dock | `com.apple.dock` | excluded | — | Default exclusion list |
 | Workspace files | user `watch_roots` | 3 | paths only | Opt-in via `orbit privacy enable-fsevents`; paths + mtimes, no file contents |

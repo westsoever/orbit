@@ -5,7 +5,9 @@ import Combine
 @Observable
 final class TaskStore {
     var pendingTasks: [TaskLogEntry] = []
+    var kanbanTasks: [TaskLogEntry] = []
     var isLoading = false
+    var lastDetectMessage: String?
 
     @ObservationIgnored private var timer: AnyCancellable?
     @ObservationIgnored private var bridge: OrbitBridgeProtocol?
@@ -35,14 +37,25 @@ final class TaskStore {
 
         if isDaemonOnline, let bridge {
             pendingTasks = await bridge.fetchPendingTasks()
+            kanbanTasks = await bridge.fetchKanbanTasks()
             return
         }
 
         if let dbReader, dbReader.isReady {
             pendingTasks = (try? dbReader.fetchPendingTasksToday()) ?? []
+            kanbanTasks = (try? dbReader.fetchKanbanTasksToday()) ?? pendingTasks
         } else {
             pendingTasks = []
+            kanbanTasks = []
         }
+    }
+
+    @MainActor
+    func detectFromCapture(bridge: OrbitBridgeProtocol) async throws {
+        let result = try await bridge.detectTasks(refresh: true)
+        lastDetectMessage = result.message
+        pendingTasks = result.tasks.filter { $0.status == "detected" }
+        kanbanTasks = await bridge.fetchKanbanTasks()
     }
 
     @MainActor

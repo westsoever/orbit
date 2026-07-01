@@ -41,6 +41,9 @@ let package = Package(
             resources: [
                 .process("Resources/Assets.xcassets"),
             ],
+            swiftSettings: [
+                .unsafeFlags(["-strict-concurrency=minimal"]),
+            ],
             linkerSettings: [
                 .linkedFramework("AppKit"),
                 .linkedFramework("SwiftUI"),

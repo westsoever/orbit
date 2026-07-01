@@ -34,6 +34,7 @@ enum UserSessionError: LocalizedError {
     case invalidEmail
     case invalidDisplayName
     case userAlreadyExists
+    case userNotFound
     case persistenceFailed(String)
 
     var errorDescription: String? {
@@ -41,6 +42,7 @@ enum UserSessionError: LocalizedError {
         case .invalidEmail: return "Enter a valid email address."
         case .invalidDisplayName: return "Enter your name."
         case .userAlreadyExists: return "An account with this email already exists on this Mac."
+        case .userNotFound: return "No account found for this email on this Mac. Create an account instead."
         case .persistenceFailed(let detail): return detail
         }
     }
@@ -107,7 +109,7 @@ final class UserSessionService {
                 try db.execute(sql: "PRAGMA foreign_keys=ON;")
             }
             let queue = try DatabaseQueue(path: dbURL.path, configuration: config)
-            try queue.write { db in
+            try await queue.write { db in
                 let existing = try Int.fetchOne(
                     db,
                     sql: "SELECT COUNT(*) FROM users WHERE email = ?",
@@ -136,6 +138,34 @@ final class UserSessionService {
         currentSession = Self.loadSessionFile()
         currentUser = user
         return user
+    }
+
+    func signIn(email: String) async throws {
+        let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard trimmedEmail.contains("@"), trimmedEmail.count >= 3 else {
+            throw UserSessionError.invalidEmail
+        }
+
+        try OrbitPaths.ensureOrbitDirectoryExists()
+        let dbURL = OrbitPaths.databaseURL
+        guard FileManager.default.fileExists(atPath: dbURL.path) else {
+            throw UserSessionError.userNotFound
+        }
+
+        var config = Configuration()
+        config.readonly = true
+        let queue = try DatabaseQueue(path: dbURL.path, configuration: config)
+        let user: OrbitUser? = try await queue.read { db in
+            try OrbitUser.fetchOne(db, sql: "SELECT * FROM users WHERE email = ?", arguments: [trimmedEmail])
+        }
+
+        guard let user else {
+            throw UserSessionError.userNotFound
+        }
+
+        try persistSession(userId: user.id, email: user.email)
+        currentSession = Self.loadSessionFile()
+        currentUser = user
     }
 
     func signOut() throws {

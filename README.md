@@ -78,13 +78,15 @@ Work through these after install and report anything that fails in a [GitHub iss
 | Step | What to do | Expected |
 |------|------------|----------|
 | 1 | `orbit doctor` | Python 3.13 + SQLite extensions OK |
-| 2 | Open Orbit → **Start** in CAPTURE | Green status dot; "Capturing" pulse |
+| 2 | Open Orbit → sign in or create account → capture starts | Green status dot; "Capturing" pulse |
 | 3 | Switch between 2–3 apps (Terminal, Safari, Notes) | History panel shows new entries within ~2 s |
 | 4 | Sidebar search for a word from a visible window | Results appear (lexical or hybrid) |
-| 5 | Chat tab → send a message | Response (needs Cloud AI enabled or local daemon + API key) |
+| 5 | Chat tab → send a message | Response (configure AI in Settings: API key, Ollama, or Cloud AI) |
 | 6 | `orbit stop` or sidebar **Stop** | Daemon stops; health check fails |
 
 Low-CPU testing: use `orbit start --detach --no-embed` (skips embedding model). Full smoke tests for contributors: `bash scripts/verify.sh --no-embed`.
+
+**Friend beta guide:** [docs/FRIEND_BETA_GUIDE.md](docs/FRIEND_BETA_GUIDE.md)
 
 ### Update or reinstall
 
@@ -131,7 +133,7 @@ Grant Accessibility to Terminal or your IDE. See `orbit/capture/PERMISSIONS.md`.
 2. **Embed** — Optional background worker embeds atoms with `all-MiniLM-L6-v2` into a `sqlite-vec` table (384-dim). Skip with `--no-embed` for lower CPU/RAM.
 3. **Search** — Hybrid BM25 + cosine similarity via Reciprocal Rank Fusion (`orbit search`).
 4. **Check** — LLM task detection from a context document; approval gate before dispatch.
-5. **Dispatch** — Streams approved prompts through OpenRouter; saves output to `mvp-output/`.
+5. **Dispatch** — Streams approved prompts through configured LLM; saves output to `~/.orbit/output/`.
 
 ---
 

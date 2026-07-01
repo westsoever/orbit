@@ -6,7 +6,7 @@ main() {
 
   ORBIT_VERSION="${ORBIT_VERSION:-}"
   ORBIT_NO_START="${ORBIT_NO_START:-}"
-  ORBIT_INSTALL_FROM_SOURCE="${ORBIT_INSTALL_FROM_SOURCE:-1}"
+  ORBIT_INSTALL_FROM_SOURCE="${ORBIT_INSTALL_FROM_SOURCE:-0}"
   ORBIT_REPO_URL="${ORBIT_REPO_URL:-https://github.com/westsoever/orbit.git}"
   ORBIT_BRANCH="${ORBIT_BRANCH:-main}"
   ORBIT_GITHUB_REPO="${ORBIT_GITHUB_REPO:-westsoever/orbit}"
@@ -50,6 +50,12 @@ main() {
     fi
   }
 
+  resolve_latest_release_version() {
+    curl -sf "https://api.github.com/repos/${ORBIT_GITHUB_REPO}/releases/latest" \
+      | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"v\([^"]*\)".*/\1/p' \
+      | head -1
+  }
+
   ensure_homebrew_python() {
     if [ -x /opt/homebrew/bin/python3.13 ]; then
       ORBIT_PYTHON=/opt/homebrew/bin/python3.13
@@ -80,12 +86,15 @@ main() {
     local ver="$1"
     local url="https://github.com/${ORBIT_GITHUB_REPO}/releases/download/v${ver}/Orbit-darwin.zip"
     status "Downloading Orbit v${ver}…"
-    curl --fail --show-error --location --progress-bar \
-      -o "$TEMP_DIR/Orbit-darwin.zip" "$url"
+    if ! curl --fail --show-error --location --progress-bar \
+      -o "$TEMP_DIR/Orbit-darwin.zip" "$url"; then
+      return 1
+    fi
     status "Installing Orbit to /Applications…"
     unzip -q "$TEMP_DIR/Orbit-darwin.zip" -d "$TEMP_DIR"
     [ -d "$TEMP_DIR/Orbit.app" ] || error "Orbit.app not found in release zip"
     mv "$TEMP_DIR/Orbit.app" "/Applications/"
+    return 0
   }
 
   install_from_source() {
@@ -116,9 +125,24 @@ main() {
     rm -rf "$APP_PATH"
   fi
 
-  if [ -n "$ORBIT_VERSION" ] && [ "$ORBIT_INSTALL_FROM_SOURCE" = "0" ]; then
-    install_from_release "$ORBIT_VERSION"
-  else
+  installed=0
+  if [ "$ORBIT_INSTALL_FROM_SOURCE" != "1" ]; then
+    if [ -z "$ORBIT_VERSION" ]; then
+      ORBIT_VERSION="$(resolve_latest_release_version || true)"
+      if [ -n "$ORBIT_VERSION" ]; then
+        status "Using latest release v${ORBIT_VERSION}…"
+      fi
+    fi
+    if [ -n "$ORBIT_VERSION" ]; then
+      if install_from_release "$ORBIT_VERSION"; then
+        installed=1
+      else
+        status "Pre-built release unavailable; falling back to source build…"
+      fi
+    fi
+  fi
+
+  if [ "$installed" -eq 0 ]; then
     install_from_source
   fi
 
@@ -143,8 +167,9 @@ main() {
   fi
 
   status "Install complete. Open Orbit from Applications or run 'orbit'."
-  status "Grant Accessibility to Orbit (and Terminal if using CLI): see orbit/capture/PERMISSIONS.md"
+  status "First launch: complete the setup wizard, sign in or create an account, then grant Accessibility."
   status "User data directory: ~/.orbit/"
+  status "Friend beta guide: docs/FRIEND_BETA_GUIDE.md"
 }
 
 main "$@"

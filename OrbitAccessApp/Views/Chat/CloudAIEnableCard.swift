@@ -5,6 +5,7 @@ struct CloudAIEnableCard: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var selectedMode: AIMode = .cloud
     @State private var localModelName = LLMPreferencesService.defaultLocalModel
+    @State private var apiKey = ""
     @State private var isSaving = false
     @State private var errorMessage: String?
 
@@ -40,17 +41,30 @@ struct CloudAIEnableCard: View {
                 }
             }
 
+            if selectedMode == .byok {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("OpenRouter API key")
+                        .font(.caption.weight(.medium))
+                    SecureField("sk-or-v1-…", text: $apiKey)
+                        .textFieldStyle(.plain)
+                        .font(.callout)
+                        .padding(10)
+                        .background(Color.clear, in: RoundedRectangle(cornerRadius: OrbitShape.radiusControl))
+                        .orbitHairlineBorder(cornerRadius: OrbitShape.radiusControl, colorScheme: colorScheme)
+                }
+            }
+
             HStack(spacing: 12) {
                 Button(action: saveSelection) {
                     if isSaving {
                         ProgressView()
                             .controlSize(.small)
                     } else {
-                        Text(selectedMode == .cloud ? "Enable Cloud AI" : "Use local model")
+                        Text(saveButtonTitle)
                     }
                 }
                 .buttonStyle(OrbitFlatButtonStyle(variant: .primary))
-                .disabled(isSaving || (selectedMode == .local && localModelName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
+                .disabled(isSaving || !canSave)
 
                 Button("Settings…") {
                     model.showCloudAISettings = true
@@ -82,6 +96,22 @@ struct CloudAIEnableCard: View {
         colorScheme == .dark ? .orbitCardDark : .orbitCardLight
     }
 
+    private var saveButtonTitle: String {
+        switch selectedMode {
+        case .cloud: return "Enable Cloud AI"
+        case .local: return "Use local model"
+        case .byok: return "Save API key"
+        }
+    }
+
+    private var canSave: Bool {
+        switch selectedMode {
+        case .cloud: return true
+        case .local: return !localModelName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case .byok: return apiKey.trimmingCharacters(in: .whitespacesAndNewlines).count >= 8
+        }
+    }
+
     private func saveSelection() {
         isSaving = true
         errorMessage = nil
@@ -93,6 +123,9 @@ struct CloudAIEnableCard: View {
                     try await LLMPreferencesService.shared.configureCloud()
                 case .local:
                     try LLMPreferencesService.shared.configureLocal(model: localModelName)
+                case .byok:
+                    try LLMPreferencesService.shared.configureBYOK(apiKey: apiKey)
+                    apiKey = ""
                 }
                 await MainActor.run { model.refreshAIState() }
             } catch {
