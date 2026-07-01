@@ -1,4 +1,4 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 5.9
 import PackageDescription
 
 let package = Package(
@@ -42,7 +42,7 @@ let package = Package(
                 .process("Resources/Assets.xcassets"),
             ],
             swiftSettings: [
-                .swiftLanguageMode(.v5),
+                .unsafeFlags(["-strict-concurrency=minimal"]),
             ],
             linkerSettings: [
                 .linkedFramework("AppKit"),
